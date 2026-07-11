@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "get-punched",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/aamirtinwala/Desktop/Harvard within Harvard/get-punched",
+      "port": 3000
+    }
+  ]
+}
