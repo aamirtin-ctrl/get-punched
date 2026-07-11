@@ -1,9 +1,8 @@
+# Netlify auto-detects Next.js and installs its official runtime automatically.
+# Do NOT declare @netlify/plugin-nextjs here — Netlify manages it internally,
+# and declaring it manually causes a plugin error.
 [build]
   command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "22"
-
-# Netlify's official Next.js runtime handles routing, SSR, and API routes.
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
