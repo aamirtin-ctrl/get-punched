@@ -23,6 +23,8 @@ export interface ScanRecord {
   email?: string;
   /** The person who was scanned. */
   name: string;
+  /** The additional info they typed (house, clubs, LinkedIn, etc.). */
+  context: string;
   /** Overall / main score (average of the seven categories). */
   overall: number;
   /** The seven individual category scores + final club match. */
@@ -94,18 +96,20 @@ export function overallFrom(result: ScanResult): number {
 
 export function buildScanRecord(input: {
   name: string;
+  context?: string;
   result: ScanResult;
   verdictUrl: string;
   scannerId?: string;
   email?: string;
 }): ScanRecord {
-  const { name, result, verdictUrl, scannerId, email } = input;
+  const { name, context, result, verdictUrl, scannerId, email } = input;
   return {
     id: randomUUID(),
     createdAt: Date.now(),
     scannerId,
     email,
     name,
+    context: context ?? "",
     overall: overallFrom(result),
     scores: {
       punch_worthiness: result.punch_worthiness.score,

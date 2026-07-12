@@ -39,6 +39,7 @@ async function respond(
     recordScan(
       buildScanRecord({
         name: payload.name,
+        context: payload.context,
         result: payload.result,
         verdictUrl,
         scannerId,
@@ -104,10 +105,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
     }
 
-    const limit = checkRateLimit(ipFromRequest(req));
+    const limit = await checkRateLimit(ipFromRequest(req));
     if (!limit.ok) {
       return NextResponse.json(
-        { error: `Slow down. Try again in ${limit.retryAfterMin} minutes.` },
+        {
+          error:
+            limit.reason === "daily-cap"
+              ? "We're at today's scan limit. Check back tomorrow."
+              : `Slow down. Try again in ${limit.retryAfterMin} minutes.`,
+        },
         { status: 429 }
       );
     }
@@ -136,10 +142,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
     }
 
-    const limit = checkRateLimit(ipFromRequest(req));
+    const limit = await checkRateLimit(ipFromRequest(req));
     if (!limit.ok) {
       return NextResponse.json(
-        { error: `Slow down. Try again in ${limit.retryAfterMin} minutes.` },
+        {
+          error:
+            limit.reason === "daily-cap"
+              ? "We're at today's scan limit. Check back tomorrow."
+              : `Slow down. Try again in ${limit.retryAfterMin} minutes.`,
+        },
         { status: 429 }
       );
     }
@@ -171,10 +182,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
     }
 
-    const limit = checkRateLimit(ipFromRequest(req));
+    const limit = await checkRateLimit(ipFromRequest(req));
     if (!limit.ok) {
       return NextResponse.json(
-        { error: `Slow down. Try again in ${limit.retryAfterMin} minutes.` },
+        {
+          error:
+            limit.reason === "daily-cap"
+              ? "We're at today's scan limit. Check back tomorrow."
+              : `Slow down. Try again in ${limit.retryAfterMin} minutes.`,
+        },
         { status: 429 }
       );
     }
