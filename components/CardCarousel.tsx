@@ -184,11 +184,29 @@ export function CardCarousel({
     }
   };
 
-  const copyLink = useCallback(async () => {
-    const ok = await copyText(linkUrl());
-    flash(ok ? "Link copied ✓" : "Couldn't copy — long-press the URL");
+  // Share with friends: copy the (short) link AND open the native share panel
+  // so they can send it through any app. Both are fired synchronously to keep
+  // the user-gesture activation valid.
+  const shareWithFriends = useCallback(() => {
+    const url = linkUrl();
+    void copyText(url);
+    const nav = navigator as Navigator & {
+      share?: (d: ShareData) => Promise<void>;
+    };
+    if (nav.share) {
+      nav
+        .share({
+          title: "Get Punched",
+          text: `See where ${name} got cut. getpunched.com`,
+          url,
+        })
+        .catch(() => {});
+      flash("Link copied — pick where to share");
+    } else {
+      flash("Link copied — send it to a friend ✓");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flash, shareUrl]);
+  }, [name, flash, shareUrl]);
 
   // Instagram is visual: share the active card image via the native sheet
   // (Instagram / Stories appear there on mobile). Desktop fallback: save the
@@ -306,32 +324,33 @@ export function CardCarousel({
         ))}
       </div>
 
-      {/* Actions */}
+      {/* Actions — Download (left) · Share with friends (middle, primary) ·
+          Instagram (right) */}
       <div className="mt-2.5 flex shrink-0 flex-col items-center gap-1.5 pb-1">
-        <div className="flex items-center justify-center gap-2.5">
+        <div className="flex w-full max-w-[24rem] items-stretch justify-center gap-2 px-3">
           <button
             onClick={downloadAll}
             disabled={busy}
-            className="eyebrow rounded-sm border-2 border-crimson px-4 py-2 text-crimson transition-colors hover:bg-crimson hover:text-card disabled:opacity-50"
-            style={{ fontSize: "0.6rem" }}
+            aria-label="Download all cards"
+            className="eyebrow shrink-0 rounded-sm border-2 border-crimson px-3 py-2 text-crimson transition-colors hover:bg-crimson hover:text-card disabled:opacity-50"
+            style={{ fontSize: "0.58rem" }}
           >
-            {busy ? "…" : "Download all"}
+            {busy ? "…" : "Download"}
+          </button>
+          <button
+            onClick={shareWithFriends}
+            className="eyebrow-wide flex-1 rounded-sm bg-crimson px-3 py-2 text-card transition-colors hover:bg-crimsondeep"
+            style={{ fontSize: "0.62rem" }}
+          >
+            Share with friends
           </button>
           <button
             onClick={shareToInstagram}
             disabled={busy}
-            className="eyebrow inline-flex items-center gap-1.5 rounded-sm bg-crimson px-4 py-2 text-card transition-colors hover:bg-crimsondeep disabled:opacity-50"
-            style={{ fontSize: "0.6rem" }}
+            aria-label="Share to Instagram"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border-2 border-crimson px-3 py-2 text-crimson transition-colors hover:bg-crimson hover:text-card disabled:opacity-50"
           >
             <InstagramGlyph />
-            Instagram
-          </button>
-          <button
-            onClick={copyLink}
-            className="eyebrow rounded-sm border-2 border-crimson px-4 py-2 text-crimson transition-colors hover:bg-crimson hover:text-card"
-            style={{ fontSize: "0.6rem" }}
-          >
-            Copy link
           </button>
         </div>
         <p
