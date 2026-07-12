@@ -36,10 +36,18 @@ async function respond(
     ? `${baseUrl()}/share/${shareId}`
     : `${baseUrl()}/share?d=${encodeURIComponent(share.d)}&sig=${encodeURIComponent(share.sig)}`;
   if (record) {
+    // DB context = what they typed + a plain 1–2 sentence scrape summary.
+    const webSummary = payload.result.web_summary?.trim();
+    const combinedContext = [
+      payload.context?.trim(),
+      webSummary ? `Web: ${webSummary}` : "",
+    ]
+      .filter(Boolean)
+      .join(" — ");
     recordScan(
       buildScanRecord({
         name: payload.name,
-        context: payload.context,
+        context: combinedContext,
         result: payload.result,
         verdictUrl,
         scannerId,

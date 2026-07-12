@@ -67,6 +67,7 @@ function normalize(raw: unknown, name: string): ScanResult {
 
   return {
     tagline: str(top.tagline) || fallback.tagline,
+    web_summary: str(top.web_summary) || fallback.web_summary,
     evidence,
     punch_worthiness: {
       score: clamp(pw.score ?? fallback.punch_worthiness.score),

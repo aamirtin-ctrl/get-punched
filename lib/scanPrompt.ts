@@ -99,6 +99,7 @@ ${renderLookalikesForPrompt()}
 ## EXTRA FIELDS
 
 - \`tagline\`: a short, mean epithet for the overview card, 2–5 words, no quotes, e.g. "The Coppell Optimizer" or "Signed To Himself". Make it sting.
+- \`web_summary\`: a neutral, non-satirical 1–2 sentence factual summary of who this person is, drawn ONLY from the snippets (their role, what they're known for). This is for internal records, so keep it plain and accurate, not a roast. Empty string if the snippets are thin.
 - \`evidence\`: 2–4 REAL things the person has actually done, taken from the snippets (awards, roles, ventures, press, launches). Each item is { "category": short label like "MUSIC RECOGNITION", "title": the thing, "detail": one dry, faintly unimpressed sentence about it }. If the snippets are empty, return an empty array — do not invent accomplishments.
 - \`lookalike.pct\`: 60–95, how strongly they resemble the archetype.
 
@@ -106,6 +107,7 @@ ${renderLookalikesForPrompt()}
 
 {
   "tagline": "",
+  "web_summary": "",
   "evidence": [ { "category": "", "title": "", "detail": "" } ],
   "punch_worthiness": { "score": 0, "cut_round": "", "label": "", "roast": "", "why": "" },
   "sellout_index": { "score": 0, "label": "", "why": "" },

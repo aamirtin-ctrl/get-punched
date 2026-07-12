@@ -17,6 +17,8 @@ export interface EvidenceItem {
 export interface ScanResult {
   /** Short epithet for the overview card, e.g. "The Coppell Optimizer". */
   tagline?: string;
+  /** Neutral 1–2 sentence factual summary from the scrape (stored in the DB). */
+  web_summary?: string;
   /** Scraped headshot URL; falls back to a monogram when absent. */
   image_url?: string;
   /** Real things they've actually done (from the scrape), for the résumé card. */
