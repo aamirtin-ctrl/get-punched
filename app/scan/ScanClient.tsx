@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CardCarousel } from "@/components/CardCarousel";
-import { Disclaimer } from "@/components/Disclaimer";
 import type { ScanPayload } from "@/lib/types";
 
 type ScanResponse = ScanPayload & { share?: { d: string; sig: string } };
@@ -104,18 +103,20 @@ export function ScanClient({
     : undefined;
 
   return (
-    <div className="flex flex-1 flex-col py-10">
-      <header className="px-6 text-center">
-        <p className="eyebrow-wide text-crimson">Harvard within Harvard</p>
+    <div className="flex h-svh flex-col overflow-hidden">
+      <header className="shrink-0 px-6 pt-4 pb-1 text-center">
+        <p className="eyebrow-wide text-crimson" style={{ fontSize: "0.6rem" }}>
+          Harvard within Harvard
+        </p>
         <h1
-          className="mt-3 text-[1.8rem] leading-tight sm:text-[2.2rem]"
+          className="mt-1.5 text-[1.5rem] leading-tight sm:text-[1.8rem]"
           style={{ fontFamily: "var(--font-display)" }}
         >
           The verdict on <em className="text-crimson">{data.name}</em>
         </h1>
         {data.factCount === 0 && (
           <p
-            className="mt-2 text-[0.75rem] text-faded"
+            className="mt-1 text-[0.68rem] text-faded"
             style={{ fontFamily: "var(--font-mono)" }}
           >
             About 0 results (0.42 seconds). The internet has never heard of you.
@@ -124,13 +125,14 @@ export function ScanClient({
         )}
       </header>
 
-      <div className="mt-8">
+      <div className="min-h-0 flex-1">
         <CardCarousel name={data.name} result={data.result} shareUrl={shareUrl} />
       </div>
 
-      <footer className="mt-12">
-        <Disclaimer />
-      </footer>
+      <p className="shrink-0 px-6 pb-2 text-center text-[0.5rem] leading-tight text-faded/70">
+        Satirical public-internet scan. Public info only, not a real measure of
+        anything. Not affiliated with Harvard or any final club.
+      </p>
     </div>
   );
 }
