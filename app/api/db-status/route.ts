@@ -17,12 +17,27 @@ export async function GET(req: Request) {
     }
   }
 
+  // Config check (presence only — never returns key values).
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
+  const hasSearch = Boolean(process.env.SEARCH_API_KEY);
+  const engine = {
+    gemini: hasGemini,
+    anthropic: hasAnthropic,
+    search: hasSearch,
+    searchProvider: process.env.SEARCH_PROVIDER || "tavily",
+    // True means live scans fall back to the generic mock cards.
+    mockMode:
+      process.env.MOCK_SCAN === "1" || (!hasGemini && !hasAnthropic),
+  };
+
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token =
     process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
   if (!url || !token) {
     return NextResponse.json({
+      engine,
       connected: false,
       reason: "No Upstash/KV env vars found. Connect the DB and redeploy.",
       storage: "in-memory (non-persistent)",
@@ -44,6 +59,7 @@ export async function GET(req: Request) {
       call("dbsize"),
     ]);
     return NextResponse.json({
+      engine,
       connected: ping === "PONG",
       storage: "upstash (persistent)",
       totalScans: totalScans ?? 0,
@@ -51,6 +67,7 @@ export async function GET(req: Request) {
     });
   } catch {
     return NextResponse.json({
+      engine,
       connected: false,
       reason: "Env vars present but the DB was unreachable.",
     });
