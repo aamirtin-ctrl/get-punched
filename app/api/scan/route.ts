@@ -1,10 +1,12 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { getStripe, stripeEnabled } from "@/lib/stripe";
+import { getStripe, stripeEnabled, baseUrl } from "@/lib/stripe";
 import { runScan, ScanRefusedError } from "@/lib/anthropic";
 import { getOrCreateScan, getScan } from "@/lib/scanStore";
 import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 import { screenInput, GUARDRAIL_MESSAGE } from "@/lib/guardrails";
 import { decodeDevToken, encodeSharePayload } from "@/lib/share";
+import { recordScan, buildScanRecord } from "@/lib/scanDb";
 import type { ScanPayload } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -15,11 +17,53 @@ async function generate(name: string, context: string): Promise<ScanPayload> {
   return { name, context, result, factCount, createdAt: Date.now() };
 }
 
+/**
+ * Build the success response: signs the share link, records the scan in the
+ * database (fire-and-forget), and stamps the visitor cookie so we can group
+ * everyone a person scanned.
+ */
+function respond(
+  payload: ScanPayload,
+  scannerId: string,
+  isNewVisitor: boolean,
+  record: boolean
+) {
+  const share = encodeSharePayload(payload);
+  const verdictUrl = `${baseUrl()}/share?d=${encodeURIComponent(share.d)}&sig=${encodeURIComponent(share.sig)}`;
+  if (record) {
+    recordScan(
+      buildScanRecord({
+        name: payload.name,
+        result: payload.result,
+        verdictUrl,
+        scannerId,
+      })
+    );
+  }
+  const res = NextResponse.json({ ...payload, share });
+  if (isNewVisitor) {
+    res.cookies.set("gp_visitor", scannerId, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return res;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const sessionId = url.searchParams.get("session_id");
   const devToken = url.searchParams.get("dev_token");
   const nameParam = url.searchParams.get("name");
+
+  // Anonymous visitor id, so we can group who a person scanned.
+  const existingVisitor = (req.headers.get("cookie") || "").match(
+    /(?:^|;\s*)gp_visitor=([^;]+)/
+  )?.[1];
+  const scannerId = existingVisitor || randomUUID();
+  const isNewVisitor = !existingVisitor;
 
   // ---- Paid path: verify the Stripe session server-side, always. ----
   if (sessionId) {
@@ -65,7 +109,7 @@ export async function GET(req: Request) {
 
     try {
       const payload = await getOrCreateScan(sessionId, () => generate(name, context));
-      return NextResponse.json({ ...payload, share: encodeSharePayload(payload) });
+      return respond(payload, scannerId, isNewVisitor, true);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
@@ -96,10 +140,12 @@ export async function GET(req: Request) {
     }
 
     try {
-      const payload = await getOrCreateScan(`dev:${devToken.slice(-32)}`, () =>
+      const devKey = `dev:${devToken.slice(-32)}`;
+      const wasCached = Boolean(await getScan(devKey));
+      const payload = await getOrCreateScan(devKey, () =>
         generate(decoded.name, decoded.context)
       );
-      return NextResponse.json({ ...payload, share: encodeSharePayload(payload) });
+      return respond(payload, scannerId, isNewVisitor, !wasCached);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
@@ -129,10 +175,10 @@ export async function GET(req: Request) {
     }
 
     try {
-      const payload = await getOrCreateScan(`free:${name}|${context}`, () =>
-        generate(name, context)
-      );
-      return NextResponse.json({ ...payload, share: encodeSharePayload(payload) });
+      const freeKey = `free:${name}|${context}`;
+      const wasCached = Boolean(await getScan(freeKey));
+      const payload = await getOrCreateScan(freeKey, () => generate(name, context));
+      return respond(payload, scannerId, isNewVisitor, !wasCached);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });

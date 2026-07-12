@@ -18,6 +18,7 @@ import { HumanMoatCard } from "./cards/HumanMoat";
 import { GunnerRatingCard } from "./cards/GunnerRating";
 import { CertifiablyCrackedCard } from "./cards/CertifiablyCracked";
 import { FinalClassificationCard } from "./cards/FinalClassification";
+import { ScanAgainCard } from "./cards/ScanAgain";
 
 const CARD_KEYS = [
   "overview",
@@ -29,7 +30,11 @@ const CARD_KEYS = [
   "gunner-rating",
   "certifiably-cracked",
   "final-classification",
+  "scan-again",
 ] as const;
+
+// The trailing CTA card is not a verdict, so it's excluded from Download all.
+const DOWNLOADABLE = (key: string) => key !== "scan-again";
 
 const CARD_W = 390;
 
@@ -118,6 +123,7 @@ export function CardCarousel({
     try {
       let n = 0;
       for (let i = 0; i < CARD_KEYS.length; i++) {
+        if (!DOWNLOADABLE(CARD_KEYS[i])) continue;
         const dataUrl = await renderCardPng(i, 2);
         if (dataUrl) {
           triggerDownload(dataUrl, `${String(i + 1).padStart(2, "0")}-${CARD_KEYS[i]}`);
@@ -204,6 +210,7 @@ export function CardCarousel({
     />,
     <CertifiablyCrackedCard key="cc" name={name} data={result.certifiably_cracked} />,
     <FinalClassificationCard key="fc" name={name} data={result.final_club} />,
+    <ScanAgainCard key="sa" name={name} />,
   ];
 
   return (
