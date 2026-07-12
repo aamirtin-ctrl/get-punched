@@ -19,6 +19,64 @@ function norm(name: string): string {
 }
 
 const SEEDS: Record<string, ScanResult> = {
+  "aamir tinwala": {
+    punch_worthiness: {
+      score: 82,
+      cut_round: "date_event",
+      label: "No Second Dinner",
+      roast:
+        "You'd survive to the date event on the founder story and a genuinely good handshake. Then a member asks whether you love the clothing brand or the bird nonprofit more, and the half-second pause tells them both are line items.",
+      why: "You have a founder's résumé before you have a college, and it reads beautifully: a car-inspired gymwear label, a conservation project with real boxes in real trees, a press feature. The clubs like polish, and you have been polishing since middle school. They just clock that the portfolio is pointed at an admissions committee, and final clubs don't like sharing a prospect with the Ad Board.",
+    },
+    sellout_index: {
+      score: 74,
+      label: "Founder-Coded",
+      why: "You weren't pulled toward the consulting pipeline; you built your own funnel and aimed it at yourself. Ascynd is a real brand with real fabric, but the product being sold hardest is the founder. 'Building in public' is recruiting where the recruiter and the candidate are the same person, posting through it.",
+    },
+    legacy_multiplier: {
+      score: 58,
+      difficulty: "NORMAL",
+      label: "Dad Wrote The First Check",
+      why: "St. Mark's tuition, a father who supplied the seed funding and the confidence, a mother who ran the nonprofit's logistics: you had a board of directors before you had a company. None of that knocks the work, which is real. It knocks calling it a bootstrap. You are running it on Normal and the deck says Hard.",
+    },
+    paper_trail: {
+      score: 42,
+      label: "Statement Pending",
+      notes: [
+        "Two brand sites, one glowing feature, zero skeletons. Suspiciously curated.",
+        "@aamir.tin: every post is a soft launch of the next post.",
+        "The SHOUTOUT DFW answers read like he approved them, because he did.",
+      ],
+      why: "Nothing aged poorly because nothing was ever left unmanaged. The whole trail is a brand, which is genuinely impressive this early and, at Harvard, its own quiet tell. A reporter would find a very tidy young operator and no story, which is the one outcome a young operator should fear.",
+    },
+    human_moat: {
+      score: 69,
+      label: "You Are The Moat",
+      why: "Claude can generate a gymwear brand deck and a nonprofit mission statement before you finish reading this sentence. What it cannot do is show up to twelve box-building events and hand a family a nesting box for free. The moat is not Ascynd's grid. It is the 500 boxes that are actually in trees.",
+    },
+    gunner_rating: {
+      score: 71,
+      label: "The Optimizer",
+      why: "'Alignment, not balance' is what you say when you have never once had an idle Saturday. Your calendar has a color for the brand, a color for the birds, and a color for the content about the brand and the birds. Somewhere in that grid is the person the résumé is technically about.",
+    },
+    certifiably_cracked: {
+      score: 66,
+      label: "Genuinely, In Parts",
+      why: "The Backyard Bird Project is the real thing: measurable, physical, kind, and much harder to fake than a lookbook. That is the cracked part, and you should protect it. The clothing brand is sharp execution of an existing idea, and packaging both as one cohesive movement is the most St. Mark's sentence ever written. Keep the birds.",
+    },
+    final_club: {
+      club: "The Fly",
+      match_pct: 71,
+      odds_pct: 8,
+      traits: ["POLISHED", "BUILDER", "MINGLER"],
+      line: "The Fly runs on prestige, presentation, and a good mingle, and you have been rehearsing all three since before you could drive. You'd fit right in, tell everyone it was your safety, and have it in the founder bio by Thanksgiving.",
+      lookalike: {
+        name: "Mark Zuckerberg",
+        line: "The visible founder who builds the platform and the personal brand at the same time and narrates the whole thing as it happens. He never made a final club either. The difference is he shipped first and branded second; you are attempting both inside the same Instagram story.",
+      },
+    },
+  },
+
   "mark zuckerberg": {
     punch_worthiness: {
       score: 22,

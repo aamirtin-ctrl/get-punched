@@ -9,28 +9,6 @@ export default function Home() {
       <section id="hero" className="relative h-svh overflow-hidden">
         <PortraitWall />
 
-        {/* Top bar — text wordmark only; the shield lives in the card crest */}
-        <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-5 py-4 sm:px-8">
-          <div className="leading-none">
-            <p
-              className="text-[1.3rem] font-bold text-crimson"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Harvard
-            </p>
-            <p className="eyebrow mt-0.5 text-ink/80" style={{ fontSize: "0.5rem" }}>
-              Within Harvard
-            </p>
-          </div>
-          <a
-            href="#hero"
-            className="rounded-md bg-crimson px-4 py-2 text-[0.78rem] font-semibold italic text-card shadow transition-colors hover:bg-crimsondeep"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Learn More
-          </a>
-        </div>
-
         {/* Center panel — full-height opaque card with a ruled inset edge */}
         <div className="absolute inset-0 z-10 flex items-stretch justify-center px-4 py-3">
           <div className="relative h-full w-full max-w-[32rem] overflow-hidden rounded-2xl border border-[#c9bda0] bg-[#f5efe1] shadow-[0_24px_70px_-18px_rgba(33,26,19,0.55)]">
@@ -39,28 +17,26 @@ export default function Home() {
             {/* scrollable content, vertically centered */}
             <div className="flex h-full flex-col justify-center overflow-y-auto px-8 py-10 sm:px-11">
               <div className="relative">
-            {/* Crest */}
-            <div className="flex items-center justify-center gap-4">
-              <span
-                className="text-[0.7rem] tracking-[0.3em] text-ink/55"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                EST.
-              </span>
+            {/* Crest — shield stacked over EST. 1636, flanked by short rules */}
+            <div className="flex flex-col items-center">
               <Image
                 src="/harvard-shield.png"
                 alt="Harvard shield"
-                width={58}
-                height={58}
-                className="h-[3.4rem] w-auto"
+                width={64}
+                height={64}
+                className="h-14 w-auto"
                 priority
               />
-              <span
-                className="text-[0.7rem] tracking-[0.3em] text-ink/55"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                1636
-              </span>
+              <div className="mt-2.5 flex items-center gap-3">
+                <span className="h-px w-7 bg-cardline" />
+                <span
+                  className="text-[0.62rem] tracking-[0.34em] text-ink/50"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  EST. 1636
+                </span>
+                <span className="h-px w-7 bg-cardline" />
+              </div>
             </div>
 
             <h1

@@ -84,18 +84,44 @@ export async function retrieveFacts(
   if (!key) return [];
 
   const provider = (process.env.SEARCH_PROVIDER ?? "tavily").toLowerCase();
-  const query = [name, "Harvard", context.slice(0, 120)].filter(Boolean).join(" ");
-
-  try {
+  const runOne = (query: string) => {
     switch (provider) {
       case "brave":
-        return await searchBrave(query, key);
+        return searchBrave(query, key);
       case "serper":
-        return await searchSerper(query, key);
+        return searchSerper(query, key);
       case "tavily":
       default:
-        return await searchTavily(query, key);
+        return searchTavily(query, key);
     }
+  };
+
+  // Several targeted angles for a genuinely deep read of the person, rather
+  // than one generic query. We do NOT force "Harvard" into the search — that
+  // biases away from finding who they actually are.
+  const ctx = context.slice(0, 140);
+  const queries = [
+    [name, ctx].filter(Boolean).join(" "),
+    `${name} LinkedIn`,
+    `${name} founder OR startup OR project`,
+    ctx ? `${name} ${ctx} interview OR profile` : "",
+  ].filter(Boolean);
+
+  try {
+    const batches = await Promise.all(
+      queries.map((q) => runOne(q).catch(() => [] as FactSnippet[]))
+    );
+    // Merge + dedupe by URL, keeping first occurrence; cap to keep the prompt lean.
+    const seen = new Set<string>();
+    const merged: FactSnippet[] = [];
+    for (const snip of batches.flat()) {
+      const k = snip.url || snip.title;
+      if (k && !seen.has(k)) {
+        seen.add(k);
+        merged.push(snip);
+      }
+    }
+    return merged.slice(0, 14);
   } catch {
     // Thin results are handled downstream ("About 0 results" is the joke).
     return [];
