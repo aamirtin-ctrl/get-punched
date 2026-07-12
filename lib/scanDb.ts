@@ -43,18 +43,30 @@ export interface ScanRecord {
   verdictUrl: string;
 }
 
-function kvConfigured(): boolean {
-  return Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+/**
+ * Upstash Redis REST credentials. Accept either the Upstash-native names or
+ * the KV_REST_API_* names (Vercel injects one or the other depending on how
+ * the integration is added).
+ */
+function kvCreds(): { url: string; token: string } | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  return url && token ? { url, token } : null;
 }
 
-/** Upstash/Vercel KV REST pipeline: array of Redis command arrays. */
+function kvConfigured(): boolean {
+  return kvCreds() !== null;
+}
+
+/** Upstash Redis REST pipeline: array of Redis command arrays. */
 async function kvPipeline(commands: (string | number)[][]): Promise<void> {
-  const url = process.env.KV_REST_API_URL!;
-  const token = process.env.KV_REST_API_TOKEN!;
-  await fetch(`${url}/pipeline`, {
+  const creds = kvCreds();
+  if (!creds) return;
+  await fetch(`${creds.url}/pipeline`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${creds.token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(commands),
