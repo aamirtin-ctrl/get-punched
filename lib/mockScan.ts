@@ -39,9 +39,9 @@ export function mockScan(name: string): ScanResult {
       why: "Nothing disqualifying, just a light residue of ambition across the public internet. A reporter would find it boring, which at Harvard is its own indictment. You are one screenshot away from a very quiet apology.",
     },
     human_moat: {
-      score: 72,
-      label: "You Are The Moat",
-      why: "The spreadsheets are automatable and the emails already read like a template. What survives is the way you make a section feel like it mattered, which no prompt produces. Claude can write your response paper. It cannot want your seat at the final dinner this badly.",
+      score: 44,
+      label: "Thin Moat",
+      why: "The spreadsheets automate, the emails already read like a template, and the personality is a LinkedIn summary someone else could have written. What's irreplaceable about you is proving hard to locate. Claude can do the job; the only thing it can't replicate is your specific brand of wanting it, and wanting is not a skill.",
     },
     gunner_rating: {
       score: 83,

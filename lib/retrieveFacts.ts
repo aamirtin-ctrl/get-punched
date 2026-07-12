@@ -30,14 +30,27 @@ async function searchTavily(query: string, key: string): Promise<FactSnippet[]> 
   const res = await fetchWithTimeout("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ query, max_results: 8, search_depth: "basic" }),
+    body: JSON.stringify({
+      query,
+      max_results: 8,
+      // Deep read: advanced search + scraped page bodies, not just snippets.
+      search_depth: "advanced",
+      include_raw_content: true,
+    }),
   });
   if (!res.ok) return [];
   const data = await res.json();
   return (data.results ?? []).map(
-    (r: { title?: string; content?: string; url?: string }) => ({
+    (r: {
+      title?: string;
+      content?: string;
+      raw_content?: string;
+      url?: string;
+    }) => ({
       title: r.title ?? "",
-      snippet: r.content ?? "",
+      // Prefer the full scraped page body; fall back to the snippet. Cap so a
+      // few long pages don't blow out the prompt.
+      snippet: (r.raw_content || r.content || "").slice(0, 1200),
       url: r.url ?? "",
     })
   );
