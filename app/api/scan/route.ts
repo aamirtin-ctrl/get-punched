@@ -7,6 +7,7 @@ import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 import { screenInput, GUARDRAIL_MESSAGE } from "@/lib/guardrails";
 import { decodeDevToken, encodeSharePayload } from "@/lib/share";
 import { recordScan, buildScanRecord } from "@/lib/scanDb";
+import { putShare } from "@/lib/shareStore";
 import type { ScanPayload } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -22,14 +23,18 @@ async function generate(name: string, context: string): Promise<ScanPayload> {
  * database (fire-and-forget), and stamps the visitor cookie so we can group
  * everyone a person scanned.
  */
-function respond(
+async function respond(
   payload: ScanPayload,
   scannerId: string,
   isNewVisitor: boolean,
   record: boolean
 ) {
   const share = encodeSharePayload(payload);
-  const verdictUrl = `${baseUrl()}/share?d=${encodeURIComponent(share.d)}&sig=${encodeURIComponent(share.sig)}`;
+  // Short link (stored in KV); falls back to the long stateless link.
+  const shareId = await putShare(payload);
+  const verdictUrl = shareId
+    ? `${baseUrl()}/share/${shareId}`
+    : `${baseUrl()}/share?d=${encodeURIComponent(share.d)}&sig=${encodeURIComponent(share.sig)}`;
   if (record) {
     recordScan(
       buildScanRecord({
@@ -40,7 +45,7 @@ function respond(
       })
     );
   }
-  const res = NextResponse.json({ ...payload, share });
+  const res = NextResponse.json({ ...payload, share, shareId });
   if (isNewVisitor) {
     res.cookies.set("gp_visitor", scannerId, {
       httpOnly: true,
@@ -109,7 +114,7 @@ export async function GET(req: Request) {
 
     try {
       const payload = await getOrCreateScan(sessionId, () => generate(name, context));
-      return respond(payload, scannerId, isNewVisitor, true);
+      return await respond(payload, scannerId, isNewVisitor, true);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
@@ -145,7 +150,7 @@ export async function GET(req: Request) {
       const payload = await getOrCreateScan(devKey, () =>
         generate(decoded.name, decoded.context)
       );
-      return respond(payload, scannerId, isNewVisitor, !wasCached);
+      return await respond(payload, scannerId, isNewVisitor, !wasCached);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
@@ -178,7 +183,7 @@ export async function GET(req: Request) {
       const freeKey = `free:${name}|${context}`;
       const wasCached = Boolean(await getScan(freeKey));
       const payload = await getOrCreateScan(freeKey, () => generate(name, context));
-      return respond(payload, scannerId, isNewVisitor, !wasCached);
+      return await respond(payload, scannerId, isNewVisitor, !wasCached);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });

@@ -39,10 +39,15 @@ export function PersonPhoto({
       </div>
     );
   }
+  // Route external images through our proxy so they're same-origin (renders
+  // into a canvas for Download/Share without tainting it).
+  const proxied = /^https?:\/\//.test(src)
+    ? `/api/img?url=${encodeURIComponent(src)}`
+    : src;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={proxied}
       alt={name}
       onError={() => setFailed(true)}
       className={`object-cover object-top ${className}`}

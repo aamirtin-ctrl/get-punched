@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { toPng } from "html-to-image";
+import JSZip from "jszip";
 import type { ScanResult } from "@/lib/types";
 import { OverviewCard } from "./cards/Overview";
 import { PunchWorthinessCard } from "./cards/PunchWorthiness";
@@ -115,40 +116,77 @@ export function CardCarousel({
     a.click();
   };
 
-  // Download EVERY card, not just the active one.
+  // Download EVERY card as a single .zip (nine separate downloads get blocked
+  // by the browser; one zip always goes through).
   const downloadAll = useCallback(async () => {
     if (busy) return;
     setBusy(true);
     flash("Rendering all cards…");
     try {
+      const zip = new JSZip();
       let n = 0;
       for (let i = 0; i < CARD_KEYS.length; i++) {
         if (!DOWNLOADABLE(CARD_KEYS[i])) continue;
         const dataUrl = await renderCardPng(i, 2);
         if (dataUrl) {
-          triggerDownload(dataUrl, `${String(i + 1).padStart(2, "0")}-${CARD_KEYS[i]}`);
+          const base64 = dataUrl.split(",")[1];
+          zip.file(
+            `${String(i + 1).padStart(2, "0")}-${CARD_KEYS[i]}.png`,
+            base64,
+            { base64: true }
+          );
           n++;
-          await new Promise((r) => setTimeout(r, 350));
         }
       }
-      flash(`Saved ${n} cards ✓`);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const safeName = name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "scan";
+      const a = document.createElement("a");
+      a.download = `get-punched-${safeName}.zip`;
+      a.href = url;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      flash(`Saved ${n} cards (zip) ✓`);
     } catch {
       flash("Download failed — try again");
     } finally {
       setBusy(false);
     }
-  }, [busy, renderCardPng, flash]);
+  }, [busy, name, renderCardPng, flash]);
 
   const linkUrl = () =>
     shareUrl ?? (typeof window !== "undefined" ? window.location.href : "");
 
-  const copyLink = useCallback(async () => {
+  // Robust copy: Clipboard API, then a legacy textarea+execCommand fallback
+  // (the async Clipboard API can be blocked by focus/permission).
+  const copyText = async (text: string): Promise<boolean> => {
     try {
-      await navigator.clipboard.writeText(linkUrl());
-      flash("Link copied ✓");
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
     } catch {
-      flash("Couldn't copy — long-press the URL");
+      /* fall through */
     }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const copyLink = useCallback(async () => {
+    const ok = await copyText(linkUrl());
+    flash(ok ? "Link copied ✓" : "Couldn't copy — long-press the URL");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flash, shareUrl]);
 

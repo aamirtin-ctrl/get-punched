@@ -5,7 +5,10 @@ import Link from "next/link";
 import { CardCarousel } from "@/components/CardCarousel";
 import type { ScanPayload } from "@/lib/types";
 
-type ScanResponse = ScanPayload & { share?: { d: string; sig: string } };
+type ScanResponse = ScanPayload & {
+  share?: { d: string; sig: string };
+  shareId?: string | null;
+};
 
 const LOADING_LINES = [
   "Pulling what little the internet has on you…",
@@ -98,9 +101,12 @@ export function ScanClient({
     );
   }
 
-  const shareUrl = data.share
-    ? `${window.location.origin}/share?d=${encodeURIComponent(data.share.d)}&sig=${encodeURIComponent(data.share.sig)}`
-    : undefined;
+  // Prefer the short KV-backed link; fall back to the stateless encoded one.
+  const shareUrl = data.shareId
+    ? `${window.location.origin}/share/${data.shareId}`
+    : data.share
+      ? `${window.location.origin}/share?d=${encodeURIComponent(data.share.d)}&sig=${encodeURIComponent(data.share.sig)}`
+      : undefined;
 
   return (
     <div className="flex h-svh flex-col overflow-hidden">
