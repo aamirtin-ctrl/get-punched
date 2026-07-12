@@ -52,8 +52,22 @@ function normalize(raw: unknown, name: string): ScanResult {
   const gr = section("gunner_rating");
   const cc = section("certifiably_cracked");
   const fc = section("final_club");
+  const top = raw as Record<string, unknown>;
+
+  const evidence = Array.isArray(top.evidence)
+    ? (top.evidence as unknown[])
+        .slice(0, 5)
+        .map((e) => {
+          const o = (e && typeof e === "object" ? e : {}) as Record<string, unknown>;
+          return { category: str(o.category), title: str(o.title), detail: str(o.detail) };
+        })
+        .filter((x) => x.title)
+    : fallback.evidence;
+  const lk = (fc.lookalike as Record<string, unknown> | undefined) ?? {};
 
   return {
+    tagline: str(top.tagline) || fallback.tagline,
+    evidence,
     punch_worthiness: {
       score: clamp(pw.score ?? fallback.punch_worthiness.score),
       cut_round: CUT_ROUNDS.includes(pw.cut_round as CutRound)
@@ -108,14 +122,13 @@ function normalize(raw: unknown, name: string): ScanResult {
         : fallback.final_club.traits,
       line: str(fc.line, fallback.final_club.line),
       lookalike: {
-        name: str(
-          (fc.lookalike as Record<string, unknown> | undefined)?.name,
-          fallback.final_club.lookalike.name
-        ),
-        line: str(
-          (fc.lookalike as Record<string, unknown> | undefined)?.line,
-          fallback.final_club.lookalike.line
-        ),
+        name: str(lk.name, fallback.final_club.lookalike.name),
+        line: str(lk.line, fallback.final_club.lookalike.line),
+        pct:
+          typeof lk.pct === "number"
+            ? clamp(lk.pct)
+            : fallback.final_club.lookalike.pct ??
+              clamp(fc.match_pct ?? fallback.final_club.match_pct),
       },
     },
   };
@@ -133,7 +146,8 @@ export async function runScan(
   name: string,
   context: string
 ): Promise<{ result: ScanResult; factCount: number }> {
-  const facts = await retrieveFacts(name, context);
+  const { snippets, images } = await retrieveFacts(name, context);
+  const scrapedImage = images[0];
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const useMock =
@@ -144,8 +158,12 @@ export async function runScan(
     // otherwise. Famous seeds are clearly "found online," so report a
     // nominal fact count to skip the "About 0 results" empty-state joke.
     const seeded = seededScanFor(name);
-    if (seeded) return { result: seeded, factCount: Math.max(facts.length, 6) };
-    return { result: mockScan(name), factCount: facts.length };
+    const base = seeded ?? mockScan(name);
+    const result = { ...base, image_url: base.image_url ?? scrapedImage };
+    return {
+      result,
+      factCount: seeded ? Math.max(snippets.length, 6) : snippets.length,
+    };
   }
 
   try {
@@ -166,7 +184,7 @@ export async function runScan(
             content: JSON.stringify({
               name,
               context,
-              snippets: facts.map((f) => `${f.title}: ${f.snippet}`),
+              snippets: snippets.map((f) => `${f.title}: ${f.snippet}`),
             }),
           },
         ],
@@ -180,10 +198,14 @@ export async function runScan(
     if (parsed && typeof parsed === "object" && parsed.refused === true) {
       throw new ScanRefusedError();
     }
-    return { result: normalize(parsed, name), factCount: facts.length };
+    const result = { ...normalize(parsed, name), image_url: scrapedImage };
+    return { result, factCount: snippets.length };
   } catch (err) {
     if (err instanceof ScanRefusedError) throw err;
     // Never error out to the user — fall back to the fixture.
-    return { result: mockScan(name), factCount: facts.length };
+    return {
+      result: { ...mockScan(name), image_url: scrapedImage },
+      factCount: snippets.length,
+    };
   }
 }

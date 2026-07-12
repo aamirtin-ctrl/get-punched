@@ -31,7 +31,7 @@ export function CardFrame({
 
   return (
     <div
-      className={`relative flex h-full w-full flex-col overflow-hidden rounded-md px-6 pt-6 pb-5 shadow-[0_18px_50px_-18px_rgba(33,26,19,0.45)] ${variantClasses[variant]}`}
+      className={`relative flex min-h-[680px] w-full flex-col overflow-hidden rounded-md px-6 pt-6 pb-5 shadow-[0_18px_50px_-18px_rgba(33,26,19,0.45)] ${variantClasses[variant]}`}
     >
       {variant === "ink" && (
         <div className="pointer-events-none absolute inset-2 rounded-sm border border-gold/60" />

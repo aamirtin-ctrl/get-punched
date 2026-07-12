@@ -14,6 +14,13 @@ export interface FactSnippet {
   url: string;
 }
 
+export interface Retrieval {
+  snippets: FactSnippet[];
+  images: string[];
+}
+
+const EMPTY: Retrieval = { snippets: [], images: [] };
+
 const TIMEOUT_MS = 8000;
 
 async function fetchWithTimeout(url: string, init: RequestInit) {
@@ -26,7 +33,7 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
   }
 }
 
-async function searchTavily(query: string, key: string): Promise<FactSnippet[]> {
+async function searchTavily(query: string, key: string): Promise<Retrieval> {
   const res = await fetchWithTimeout("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
@@ -36,11 +43,12 @@ async function searchTavily(query: string, key: string): Promise<FactSnippet[]> 
       // Deep read: advanced search + scraped page bodies, not just snippets.
       search_depth: "advanced",
       include_raw_content: true,
+      include_images: true,
     }),
   });
-  if (!res.ok) return [];
+  if (!res.ok) return EMPTY;
   const data = await res.json();
-  return (data.results ?? []).map(
+  const snippets = (data.results ?? []).map(
     (r: {
       title?: string;
       content?: string;
@@ -48,53 +56,58 @@ async function searchTavily(query: string, key: string): Promise<FactSnippet[]> 
       url?: string;
     }) => ({
       title: r.title ?? "",
-      // Prefer the full scraped page body; fall back to the snippet. Cap so a
-      // few long pages don't blow out the prompt.
       snippet: (r.raw_content || r.content || "").slice(0, 1200),
       url: r.url ?? "",
     })
   );
+  // Tavily returns images as URL strings (or {url} objects).
+  const images = (data.images ?? [])
+    .map((im: string | { url?: string }) => (typeof im === "string" ? im : im?.url))
+    .filter(Boolean) as string[];
+  return { snippets, images };
 }
 
-async function searchBrave(query: string, key: string): Promise<FactSnippet[]> {
+async function searchBrave(query: string, key: string): Promise<Retrieval> {
   const res = await fetchWithTimeout(
     `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=8`,
     { headers: { "X-Subscription-Token": key, Accept: "application/json" } }
   );
-  if (!res.ok) return [];
+  if (!res.ok) return EMPTY;
   const data = await res.json();
-  return (data.web?.results ?? []).map(
+  const snippets = (data.web?.results ?? []).map(
     (r: { title?: string; description?: string; url?: string }) => ({
       title: r.title ?? "",
       snippet: r.description ?? "",
       url: r.url ?? "",
     })
   );
+  return { snippets, images: [] };
 }
 
-async function searchSerper(query: string, key: string): Promise<FactSnippet[]> {
+async function searchSerper(query: string, key: string): Promise<Retrieval> {
   const res = await fetchWithTimeout("https://google.serper.dev/search", {
     method: "POST",
     headers: { "X-API-KEY": key, "Content-Type": "application/json" },
     body: JSON.stringify({ q: query, num: 8 }),
   });
-  if (!res.ok) return [];
+  if (!res.ok) return EMPTY;
   const data = await res.json();
-  return (data.organic ?? []).map(
+  const snippets = (data.organic ?? []).map(
     (r: { title?: string; snippet?: string; link?: string }) => ({
       title: r.title ?? "",
       snippet: r.snippet ?? "",
       url: r.link ?? "",
     })
   );
+  return { snippets, images: [] };
 }
 
 export async function retrieveFacts(
   name: string,
   context: string
-): Promise<FactSnippet[]> {
+): Promise<Retrieval> {
   const key = process.env.SEARCH_API_KEY;
-  if (!key) return [];
+  if (!key) return EMPTY;
 
   const provider = (process.env.SEARCH_PROVIDER ?? "tavily").toLowerCase();
   const runOne = (query: string) => {
@@ -118,25 +131,36 @@ export async function retrieveFacts(
     `${name} LinkedIn`,
     `${name} founder OR startup OR project`,
     ctx ? `${name} ${ctx} interview OR profile` : "",
+    `${name} headshot OR photo`,
   ].filter(Boolean);
 
   try {
     const batches = await Promise.all(
-      queries.map((q) => runOne(q).catch(() => [] as FactSnippet[]))
+      queries.map((q) => runOne(q).catch(() => EMPTY))
     );
-    // Merge + dedupe by URL, keeping first occurrence; cap to keep the prompt lean.
+    // Merge + dedupe snippets by URL; merge + dedupe image URLs.
     const seen = new Set<string>();
-    const merged: FactSnippet[] = [];
-    for (const snip of batches.flat()) {
-      const k = snip.url || snip.title;
-      if (k && !seen.has(k)) {
-        seen.add(k);
-        merged.push(snip);
+    const snippets: FactSnippet[] = [];
+    const imgSeen = new Set<string>();
+    const images: string[] = [];
+    for (const b of batches) {
+      for (const snip of b.snippets) {
+        const k = snip.url || snip.title;
+        if (k && !seen.has(k)) {
+          seen.add(k);
+          snippets.push(snip);
+        }
+      }
+      for (const img of b.images) {
+        if (img && !imgSeen.has(img)) {
+          imgSeen.add(img);
+          images.push(img);
+        }
       }
     }
-    return merged.slice(0, 14);
+    return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
   } catch {
     // Thin results are handled downstream ("About 0 results" is the joke).
-    return [];
+    return EMPTY;
   }
 }

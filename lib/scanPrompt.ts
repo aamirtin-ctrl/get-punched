@@ -92,9 +92,17 @@ ${renderLookalikesForPrompt()}
 - Never sexualize anyone. Never target a minor. If the input appears to target a private minor or a non-public person maliciously, return the JSON with all scores null and a single field "refused": true.
 - Keep each \`why\` to 2–4 sentences. Keep \`roast\`, \`line\`, and \`notes[]\` to one or two sentences each.
 
+## EXTRA FIELDS
+
+- \`tagline\`: a short, mean epithet for the overview card, 2–5 words, no quotes, e.g. "The Coppell Optimizer" or "Signed To Himself". Make it sting.
+- \`evidence\`: 2–4 REAL things the person has actually done, taken from the snippets (awards, roles, ventures, press, launches). Each item is { "category": short label like "MUSIC RECOGNITION", "title": the thing, "detail": one dry, faintly unimpressed sentence about it }. If the snippets are empty, return an empty array — do not invent accomplishments.
+- \`lookalike.pct\`: 60–95, how strongly they resemble the archetype.
+
 ## OUTPUT SCHEMA (return exactly this shape)
 
 {
+  "tagline": "",
+  "evidence": [ { "category": "", "title": "", "detail": "" } ],
   "punch_worthiness": { "score": 0, "cut_round": "", "label": "", "roast": "", "why": "" },
   "sellout_index": { "score": 0, "label": "", "why": "" },
   "legacy_multiplier": { "score": 0, "difficulty": "", "label": "", "why": "" },
@@ -102,7 +110,7 @@ ${renderLookalikesForPrompt()}
   "human_moat": { "score": 0, "label": "", "why": "" },
   "gunner_rating": { "score": 0, "label": "", "why": "" },
   "certifiably_cracked": { "score": 0, "label": "", "why": "" },
-  "final_club": { "club": "", "match_pct": 0, "odds_pct": 0, "traits": ["", "", ""], "line": "", "lookalike": { "name": "", "line": "" } },
+  "final_club": { "club": "", "match_pct": 0, "odds_pct": 0, "traits": ["", "", ""], "line": "", "lookalike": { "name": "", "line": "", "pct": 0 } },
   "references_used": []
 }`;
 

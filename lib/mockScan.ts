@@ -9,6 +9,19 @@ import type { ScanResult } from "./types";
 export function mockScan(name: string): ScanResult {
   const first = name.split(" ")[0] || "You";
   return {
+    tagline: "The Internet's Best-Kept Non-Secret",
+    evidence: [
+      {
+        category: "Digital Footprint",
+        title: "A LinkedIn set to 'Open to Work'",
+        detail: "Headline says 'aspiring.' It has said that for three years.",
+      },
+      {
+        category: "Peak Engagement",
+        title: "An 'Excited to announce' post",
+        detail: "Eleven likes, four from relatives.",
+      },
+    ],
     punch_worthiness: {
       score: 68,
       cut_round: "date_event",
@@ -62,6 +75,7 @@ export function mockScan(name: string): ScanResult {
       lookalike: {
         name: "Mark Zuckerberg",
         line: "Never made a final club and built a two-billion-user grudge about it. He at least shipped something out of the rejection; you'd have just refreshed your email.",
+        pct: 61,
       },
     },
   };

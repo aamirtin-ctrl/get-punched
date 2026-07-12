@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { toPng } from "html-to-image";
 import type { ScanResult } from "@/lib/types";
+import { OverviewCard } from "./cards/Overview";
 import { PunchWorthinessCard } from "./cards/PunchWorthiness";
 import { SelloutIndexCard } from "./cards/SelloutIndex";
 import { LegacyMultiplierCard } from "./cards/LegacyMultiplier";
@@ -13,6 +20,7 @@ import { CertifiablyCrackedCard } from "./cards/CertifiablyCracked";
 import { FinalClassificationCard } from "./cards/FinalClassification";
 
 const CARD_KEYS = [
+  "overview",
   "punch-worthiness",
   "sellout-index",
   "legacy-multiplier",
@@ -23,9 +31,7 @@ const CARD_KEYS = [
   "final-classification",
 ] as const;
 
-// Fixed design size every card is authored against; we scale to fit.
 const CARD_W = 390;
-const CARD_H = 680;
 
 export function CardCarousel({
   name,
@@ -41,36 +47,40 @@ export function CardCarousel({
   const [active, setActive] = useState(0);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
+  // Per-card { natural height, fit scale }; cards have variable content height.
+  const [metrics, setMetrics] = useState<{ h: number; scale: number }[]>([]);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2200);
+    setTimeout(() => setToast(null), 2600);
   }, []);
 
-  // Scale each fixed-size card so a whole one always fits the available box —
-  // never a vertical scroll, never clipped text, on any screen.
-  useEffect(() => {
+  // Measure each card's natural height (transform-independent) and scale it to
+  // fit the available box, so a whole card always shows — no clip, no scroll.
+  useLayoutEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     const compute = () => {
-      const h = track.clientHeight - 8;
-      const w = track.clientWidth - 24;
-      setScale(Math.min(1, h / CARD_H, w / CARD_W));
+      const availH = track.clientHeight - 8;
+      const availW = track.clientWidth - 24;
+      setMetrics(
+        cardRefs.current.map((node) => {
+          const h = node?.offsetHeight || 680;
+          return { h, scale: Math.min(1, availH / h, availW / CARD_W) };
+        })
+      );
     };
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(track);
     return () => ro.disconnect();
-  }, []);
+  }, [result]);
 
-  // Each card sits in a full-width snap slide, so one slide = one track width.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
-    const onScroll = () => {
+    const onScroll = () =>
       setActive(Math.round(track.scrollLeft / track.clientWidth));
-    };
     track.addEventListener("scroll", onScroll, { passive: true });
     return () => track.removeEventListener("scroll", onScroll);
   }, []);
@@ -81,44 +91,54 @@ export function CardCarousel({
     track.scrollTo({ left: track.clientWidth * i, behavior: "smooth" });
   }, []);
 
-  const renderPng = useCallback(async () => {
-    const node = cardRefs.current[active];
+  const renderCardPng = useCallback(async (i: number, pixelRatio = 3) => {
+    const node = cardRefs.current[i];
     if (!node) return null;
-    // Capture at full design resolution, undoing the on-screen fit scale.
     return toPng(node, {
-      pixelRatio: 3,
+      pixelRatio,
       cacheBust: true,
       width: CARD_W,
-      height: CARD_H,
+      height: node.offsetHeight,
       style: { transform: "none", transformOrigin: "top left", margin: "0" },
     });
-  }, [active]);
+  }, []);
 
-  const download = useCallback(async () => {
+  const triggerDownload = (dataUrl: string, key: string) => {
+    const a = document.createElement("a");
+    a.download = `get-punched-${key}.png`;
+    a.href = dataUrl;
+    a.click();
+  };
+
+  // Download EVERY card, not just the active one.
+  const downloadAll = useCallback(async () => {
     if (busy) return;
     setBusy(true);
+    flash("Rendering all cards…");
     try {
-      const dataUrl = await renderPng();
-      if (dataUrl) {
-        const a = document.createElement("a");
-        a.download = `get-punched-${CARD_KEYS[active]}.png`;
-        a.href = dataUrl;
-        a.click();
-        flash("Card saved ✓");
+      let n = 0;
+      for (let i = 0; i < CARD_KEYS.length; i++) {
+        const dataUrl = await renderCardPng(i, 2);
+        if (dataUrl) {
+          triggerDownload(dataUrl, `${String(i + 1).padStart(2, "0")}-${CARD_KEYS[i]}`);
+          n++;
+          await new Promise((r) => setTimeout(r, 350));
+        }
       }
+      flash(`Saved ${n} cards ✓`);
     } catch {
       flash("Download failed — try again");
     } finally {
       setBusy(false);
     }
-  }, [active, busy, renderPng, flash]);
+  }, [busy, renderCardPng, flash]);
 
-  const shareUrlResolved = () =>
+  const linkUrl = () =>
     shareUrl ?? (typeof window !== "undefined" ? window.location.href : "");
 
   const copyLink = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(shareUrlResolved());
+      await navigator.clipboard.writeText(linkUrl());
       flash("Link copied ✓");
     } catch {
       flash("Couldn't copy — long-press the URL");
@@ -126,14 +146,14 @@ export function CardCarousel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flash, shareUrl]);
 
-  // Instagram is visual: share the actual card image via the native sheet
-  // (where Instagram / Stories appear on mobile). On desktop there's no web
-  // path into Instagram, so we save the image and copy the link instead.
+  // Instagram is visual: share the active card image via the native sheet
+  // (Instagram / Stories appear there on mobile). Desktop fallback: save the
+  // image and copy the link to paste manually.
   const shareToInstagram = useCallback(async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const dataUrl = await renderPng();
+      const dataUrl = await renderCardPng(active, 3);
       if (dataUrl) {
         const blob = await (await fetch(dataUrl)).blob();
         const file = new File([blob], `get-punched-${CARD_KEYS[active]}.png`, {
@@ -150,82 +170,85 @@ export function CardCarousel({
           });
           return;
         }
-        // Desktop fallback: save the image + copy the link to paste on IG.
-        const a = document.createElement("a");
-        a.download = `get-punched-${CARD_KEYS[active]}.png`;
-        a.href = dataUrl;
-        a.click();
+        triggerDownload(dataUrl, CARD_KEYS[active]);
       }
       try {
-        await navigator.clipboard.writeText(shareUrlResolved());
+        await navigator.clipboard.writeText(linkUrl());
       } catch {}
       flash("Saved image + copied link — post it to Instagram");
     } catch {
-      flash("Share failed — try Download instead");
+      flash("Share failed — try Download");
     } finally {
       setBusy(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, busy, name, renderPng, flash, shareUrl]);
+  }, [active, busy, name, renderCardPng, flash, shareUrl]);
 
   const cards = [
+    <OverviewCard key="ov" name={name} result={result} />,
     <PunchWorthinessCard key="pw" name={name} data={result.punch_worthiness} />,
     <SelloutIndexCard key="si" name={name} data={result.sellout_index} />,
     <LegacyMultiplierCard key="lm" name={name} data={result.legacy_multiplier} />,
-    <PaperTrailCard key="pt" name={name} data={result.paper_trail} />,
+    <PaperTrailCard
+      key="pt"
+      name={name}
+      data={result.paper_trail}
+      imageUrl={result.image_url}
+    />,
     <HumanMoatCard key="hm" name={name} data={result.human_moat} />,
-    <GunnerRatingCard key="gr" name={name} data={result.gunner_rating} />,
+    <GunnerRatingCard
+      key="gr"
+      name={name}
+      data={result.gunner_rating}
+      evidence={result.evidence}
+    />,
     <CertifiablyCrackedCard key="cc" name={name} data={result.certifiably_cracked} />,
     <FinalClassificationCard key="fc" name={name} data={result.final_club} />,
   ];
 
-  const onLastCard = active === CARD_KEYS.length - 1;
-
   return (
     <div className="flex h-full w-full flex-col">
-      {/* Card track — each card in a full-width snap slide, sized to fit height */}
+      {/* Card track — each card in a full-width snap slide, scaled to fit */}
       <div
         ref={trackRef}
         className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {cards.map((card, i) => (
-          <div
-            key={CARD_KEYS[i]}
-            className="flex h-full w-full shrink-0 snap-center items-center justify-center overflow-hidden px-3"
-          >
-            {/* Outer box takes the scaled footprint and runs the entrance
-                animation; inner card stays at design size and is
-                transform-scaled to fit (content never reflows, never clips).
-                The animation lives on the outer box so its transform doesn't
-                clobber the inner fit-scale. */}
+        {cards.map((card, i) => {
+          const m = metrics[i];
+          const scale = m?.scale ?? 1;
+          return (
             <div
-              className="card-in"
-              style={{
-                width: CARD_W * scale,
-                height: CARD_H * scale,
-                animationDelay: `${i * 45}ms`,
-              }}
+              key={CARD_KEYS[i]}
+              className="flex h-full w-full shrink-0 snap-center items-center justify-center overflow-hidden px-3"
             >
               <div
-                ref={(el) => {
-                  cardRefs.current[i] = el;
-                }}
+                className="card-in"
                 style={{
-                  width: CARD_W,
-                  height: CARD_H,
-                  transform: `scale(${scale})`,
-                  transformOrigin: "top left",
+                  width: CARD_W * scale,
+                  height: m ? m.h * scale : undefined,
+                  animationDelay: `${i * 40}ms`,
                 }}
               >
-                {card}
+                <div
+                  ref={(el) => {
+                    cardRefs.current[i] = el;
+                  }}
+                  style={{
+                    width: CARD_W,
+                    transform: `scale(${scale})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  {card}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Dots */}
-      <div className="mt-2 flex shrink-0 items-center justify-center gap-2">
+      <div className="mt-2 flex shrink-0 items-center justify-center gap-1.5">
         {CARD_KEYS.map((key, i) => (
           <button
             key={key}
@@ -240,19 +263,14 @@ export function CardCarousel({
 
       {/* Actions */}
       <div className="mt-2.5 flex shrink-0 flex-col items-center gap-1.5 pb-1">
-        {onLastCard && (
-          <p className="eyebrow text-crimson" style={{ fontSize: "0.55rem" }}>
-            Share your verdict
-          </p>
-        )}
         <div className="flex items-center justify-center gap-2.5">
           <button
-            onClick={download}
+            onClick={downloadAll}
             disabled={busy}
             className="eyebrow rounded-sm border-2 border-crimson px-4 py-2 text-crimson transition-colors hover:bg-crimson hover:text-card disabled:opacity-50"
             style={{ fontSize: "0.6rem" }}
           >
-            {busy ? "…" : "Download"}
+            {busy ? "…" : "Download all"}
           </button>
           <button
             onClick={shareToInstagram}

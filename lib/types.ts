@@ -8,7 +8,19 @@ export type CutRound =
 
 export type Difficulty = "EASY" | "NORMAL" | "HARD" | "NIGHTMARE";
 
+export interface EvidenceItem {
+  category: string;
+  title: string;
+  detail: string;
+}
+
 export interface ScanResult {
+  /** Short epithet for the overview card, e.g. "The Coppell Optimizer". */
+  tagline?: string;
+  /** Scraped headshot URL; falls back to a monogram when absent. */
+  image_url?: string;
+  /** Real things they've actually done (from the scrape), for the résumé card. */
+  evidence?: EvidenceItem[];
   punch_worthiness: {
     score: number;
     cut_round: CutRound;
@@ -57,6 +69,7 @@ export interface ScanResult {
     lookalike: {
       name: string;
       line: string;
+      pct?: number;
     };
   };
 }

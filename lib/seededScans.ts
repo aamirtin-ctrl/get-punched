@@ -20,6 +20,29 @@ function norm(name: string): string {
 
 const SEEDS: Record<string, ScanResult> = {
   "aamir tinwala": {
+    tagline: "The Coppell Optimizer",
+    evidence: [
+      {
+        category: "Business Ventures",
+        title: "Ascynd — car-inspired gymwear brand",
+        detail: "'Design intention' is doing a lot of work in that tagline.",
+      },
+      {
+        category: "Conservation",
+        title: "Backyard Bird Project · 500+ nesting boxes",
+        detail: "The one genuinely good thing, now also content.",
+      },
+      {
+        category: "Press",
+        title: "Featured in SHOUTOUT DFW",
+        detail: "A profile that reads like he wrote the questions.",
+      },
+      {
+        category: "Pedigree",
+        title: "St. Mark's School of Texas",
+        detail: "Roughly a mid-size mortgage per diploma.",
+      },
+    ],
     punch_worthiness: {
       score: 71,
       cut_round: "date_event",
@@ -73,6 +96,7 @@ const SEEDS: Record<string, ScanResult> = {
       lookalike: {
         name: "Mark Zuckerberg",
         line: "The founder who builds the product and the personal brand in one motion and narrates the whole thing to an audience that never asked. He got rejected by the clubs too and turned the resentment into a company. You're turning it into a merch drop. Aim higher, or at least stop filming.",
+        pct: 84,
       },
     },
   },

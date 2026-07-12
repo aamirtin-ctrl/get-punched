@@ -1,13 +1,13 @@
 import { CardFrame, CardHeader, WhyBlock } from "./chrome";
-import type { ScanResult } from "@/lib/types";
+import type { EvidenceItem, ScanResult } from "@/lib/types";
 
 /**
  * EKG path scales with score: high score = frantic curve-wrecker spikes,
  * low score = burnt-out flatline.
  */
 function ekgPath(score: number): string {
-  const amp = 4 + (score / 100) * 16; // spike amplitude
-  const mid = 26;
+  const amp = 3 + (score / 100) * 13;
+  const mid = 18;
   let d = `M 0 ${mid}`;
   for (let i = 0; i < 4; i++) {
     const x = i * 50;
@@ -20,13 +20,15 @@ function ekgPath(score: number): string {
 export function GunnerRatingCard({
   name,
   data,
+  evidence,
 }: {
   name: string;
   data: ScanResult["gunner_rating"];
+  evidence?: EvidenceItem[];
 }) {
   const hoursSlept = Math.max(1.5, 8.5 - (data.score / 100) * 6.5);
   const bpm = Math.round(58 + (data.score / 100) * 70);
-  const sleepPct = (hoursSlept / 9) * 100;
+  const items = (evidence ?? []).slice(0, 4);
 
   return (
     <CardFrame name={name}>
@@ -38,20 +40,17 @@ export function GunnerRatingCard({
         label={data.label}
       />
 
-      {/* Vitals monitor */}
-      <div className="mt-5 overflow-hidden rounded-sm border border-[#22303a] bg-[#0b1216] px-4 py-3.5">
+      {/* Compact vitals strip */}
+      <div className="mt-3 overflow-hidden rounded-sm border border-[#22303a] bg-[#0b1216] px-3 py-2">
         <div
-          className="flex items-center justify-between text-[0.58rem] uppercase tracking-[0.2em] text-[#7fd4e8]"
+          className="flex items-center justify-between text-[0.52rem] uppercase tracking-[0.18em]"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          <span>Pre-med vitals · Lamont, 3:12 AM</span>
-          <span className="text-[#e05252]">{bpm} BPM</span>
+          <span className="text-[#7fd4e8]">Vitals · Lamont, 3:12 AM</span>
+          <span className="text-[#e05252]">{bpm} BPM · {hoursSlept.toFixed(1)}h slept</span>
         </div>
-
-        <svg viewBox="0 0 200 52" className="mt-2 w-full">
-          {[13, 26, 39].map((y) => (
-            <line key={y} x1="0" y1={y} x2="200" y2={y} stroke="#16242c" strokeWidth="0.5" />
-          ))}
+        <svg viewBox="0 0 200 36" className="mt-1 w-full">
+          <line x1="0" y1="18" x2="200" y2="18" stroke="#16242c" strokeWidth="0.5" />
           <path
             d={ekgPath(data.score)}
             fill="none"
@@ -62,26 +61,35 @@ export function GunnerRatingCard({
             style={{ filter: "drop-shadow(0 0 4px rgba(79,227,193,0.6))" }}
           />
         </svg>
+      </div>
 
-        {/* Hours-slept gauge */}
-        <div className="mt-2 border-t border-[#16242c] pt-2.5">
-          <div
-            className="flex items-center justify-between text-[0.58rem] uppercase tracking-[0.2em]"
-            style={{ fontFamily: "var(--font-mono)" }}
-          >
-            <span className="text-[#7fd4e8]">Hours slept</span>
-            <span className={hoursSlept < 4 ? "text-[#e05252]" : "text-[#4fe3c1]"}>
-              {hoursSlept.toFixed(1)} HRS
-            </span>
+      {/* Track record — real things they've actually done */}
+      {items.length > 0 && (
+        <div className="mt-3">
+          <div className="flex items-center gap-2">
+            <p className="eyebrow text-crimson">On the record</p>
+            <div className="h-px flex-1 bg-cardline" />
           </div>
-          <div className="mt-1.5 h-2 w-full rounded-full bg-[#16242c]">
-            <div
-              className={`h-full rounded-full ${hoursSlept < 4 ? "bg-[#e05252]" : "bg-[#4fe3c1]"}`}
-              style={{ width: `${sleepPct}%` }}
-            />
+          <div className="mt-2 space-y-2">
+            {items.map((e, i) => (
+              <div key={i} className="flex gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-crimson" />
+                <div className="min-w-0">
+                  <p className="eyebrow text-faded" style={{ fontSize: "0.5rem" }}>
+                    {e.category}
+                  </p>
+                  <p className="text-[0.8rem] font-semibold leading-tight text-ink">
+                    {e.title}
+                  </p>
+                  <p className="text-[0.72rem] leading-tight text-ink/70">
+                    {e.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
       <WhyBlock score={data.score} why={data.why} />
     </CardFrame>

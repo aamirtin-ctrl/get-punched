@@ -1,4 +1,5 @@
 import { CardFrame, CardHeader, WhyBlock } from "./chrome";
+import { PersonPhoto } from "../PersonPhoto";
 import type { ScanResult } from "@/lib/types";
 
 const STICKY_POSITIONS = [
@@ -10,18 +11,12 @@ const STICKY_POSITIONS = [
 export function PaperTrailCard({
   name,
   data,
+  imageUrl,
 }: {
   name: string;
   data: ScanResult["paper_trail"];
+  imageUrl?: string;
 }) {
-  const initials = name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   const notes = data.notes.slice(0, 3);
 
   return (
@@ -52,15 +47,14 @@ export function PaperTrailCard({
           />
         </svg>
 
-        {/* Center "photo" */}
+        {/* Center "photo" — scraped headshot, pinned like evidence */}
         <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
           <div className="rotate-1 border-4 border-[#f3ead8] bg-[#d8ccb4] p-1 shadow-lg">
-            <div
-              className="flex h-14 w-14 items-center justify-center bg-[#8f7f68] text-xl text-[#f3ead8]"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {initials || "?"}
-            </div>
+            <PersonPhoto
+              src={imageUrl}
+              name={name}
+              className="h-14 w-14 bg-[#8f7f68] text-[#f3ead8]"
+            />
           </div>
           <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#c0392b] shadow" />
         </div>
