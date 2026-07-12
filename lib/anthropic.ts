@@ -142,6 +142,52 @@ export class ScanRefusedError extends Error {
   }
 }
 
+/** Google Gemini — the default engine. Forces JSON output. */
+async function callGemini(key: string, userContent: string): Promise<string> {
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SCAN_SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: userContent }] }],
+        generationConfig: {
+          temperature: 1,
+          maxOutputTokens: 8000,
+          responseMimeType: "application/json",
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`Gemini ${res.status}`);
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
+
+/** Anthropic — used if ANTHROPIC_API_KEY is set and no Gemini key is present. */
+async function callAnthropic(key: string, userContent: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.SCAN_MODEL || DEFAULT_MODEL,
+      max_tokens: 3000,
+      system: SCAN_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userContent }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+  const data = await res.json();
+  return data.content?.[0]?.text ?? "";
+}
+
 export async function runScan(
   name: string,
   context: string
@@ -149,9 +195,12 @@ export async function runScan(
   const { snippets, images } = await retrieveFacts(name, context);
   const scrapedImage = images[0];
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const useMock =
-    process.env.MOCK_SCAN === "1" || !apiKey || scanPromptIsPlaceholder();
+    process.env.MOCK_SCAN === "1" ||
+    (!geminiKey && !anthropicKey) ||
+    scanPromptIsPlaceholder();
 
   if (useMock) {
     // Free test path: hand-authored seeds for known names, generic mock
@@ -166,34 +215,16 @@ export async function runScan(
     };
   }
 
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.SCAN_MODEL || DEFAULT_MODEL,
-        max_tokens: 3000,
-        system: SCAN_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: JSON.stringify({
-              name,
-              context,
-              snippets: snippets.map((f) => `${f.title}: ${f.snippet}`),
-            }),
-          },
-        ],
-      }),
-    });
+  const userContent = JSON.stringify({
+    name,
+    context,
+    snippets: snippets.map((f) => `${f.title}: ${f.snippet}`),
+  });
 
-    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-    const data = await res.json();
-    const text: string = data.content?.[0]?.text ?? "";
+  try {
+    const text = geminiKey
+      ? await callGemini(geminiKey, userContent)
+      : await callAnthropic(anthropicKey as string, userContent);
     const parsed = JSON.parse(extractJson(text));
     if (parsed && typeof parsed === "object" && parsed.refused === true) {
       throw new ScanRefusedError();
@@ -202,9 +233,11 @@ export async function runScan(
     return { result, factCount: snippets.length };
   } catch (err) {
     if (err instanceof ScanRefusedError) throw err;
-    // Never error out to the user — fall back to the fixture.
+    // Never error out to the user — fall back to a seed if we have one, else
+    // the generic fixture.
+    const base = seededScanFor(name) ?? mockScan(name);
     return {
-      result: { ...mockScan(name), image_url: scrapedImage },
+      result: { ...base, image_url: base.image_url ?? scrapedImage },
       factCount: snippets.length,
     };
   }
