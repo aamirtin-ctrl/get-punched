@@ -8,6 +8,8 @@
  * error.
  */
 
+import { extractLinkedInUrl, scrapeLinkedIn } from "./linkedin";
+
 export interface FactSnippet {
   title: string;
   snippet: string;
@@ -106,8 +108,28 @@ export async function retrieveFacts(
   name: string,
   context: string
 ): Promise<Retrieval> {
+  const snippets: FactSnippet[] = [];
+  const images: string[] = [];
+
+  // 1) LinkedIn first — if a profile URL was provided and a scraper is
+  // configured, it's authoritative identity: goes at the front of both lists.
+  const liUrl = extractLinkedInUrl(context);
+  if (liUrl) {
+    const li = await scrapeLinkedIn(liUrl);
+    if (li) {
+      snippets.push({
+        title: "LinkedIn profile (self-provided, AUTHORITATIVE — this is the subject)",
+        snippet: li.text,
+        url: liUrl,
+      });
+      if (li.imageUrl) images.push(li.imageUrl);
+    }
+  }
+
   const key = process.env.SEARCH_API_KEY;
-  if (!key) return EMPTY;
+  if (!key) {
+    return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
+  }
 
   const provider = (process.env.SEARCH_PROVIDER ?? "tavily").toLowerCase();
   const runOne = (query: string) => {
@@ -139,11 +161,9 @@ export async function retrieveFacts(
     const batches = await Promise.all(
       queries.map((q) => runOne(q).catch(() => EMPTY))
     );
-    // Merge + dedupe snippets by URL; merge + dedupe image URLs.
-    const seen = new Set<string>();
-    const snippets: FactSnippet[] = [];
-    const imgSeen = new Set<string>();
-    const images: string[] = [];
+    // Append search results after the LinkedIn entry, deduping against it.
+    const seen = new Set<string>(snippets.map((s) => s.url || s.title));
+    const imgSeen = new Set<string>(images);
     for (const b of batches) {
       for (const snip of b.snippets) {
         const k = snip.url || snip.title;
@@ -161,7 +181,8 @@ export async function retrieveFacts(
     }
     return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
   } catch {
-    // Thin results are handled downstream ("About 0 results" is the joke).
-    return EMPTY;
+    // Search failed — still return whatever LinkedIn gave us. Thin results are
+    // handled downstream ("About 0 results" is the joke).
+    return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
   }
 }
