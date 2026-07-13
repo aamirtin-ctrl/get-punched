@@ -111,43 +111,23 @@ export async function retrieveFacts(
   const snippets: FactSnippet[] = [];
   const images: string[] = [];
 
-  // 1) LinkedIn first — if a profile URL was provided and a scraper is
-  // configured, it's authoritative identity: goes at the front of both lists.
   const liUrl = extractLinkedInUrl(context);
-  if (liUrl) {
-    const li = await scrapeLinkedIn(liUrl);
-    if (li) {
-      snippets.push({
-        title: "LinkedIn profile (self-provided, AUTHORITATIVE — this is the subject)",
-        snippet: li.text,
-        url: liUrl,
-      });
-      if (li.imageUrl) images.push(li.imageUrl);
-    }
-  }
-
   const key = process.env.SEARCH_API_KEY;
-  if (!key) {
-    return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
-  }
 
   const provider = (process.env.SEARCH_PROVIDER ?? "tavily").toLowerCase();
   const runOne = (query: string) => {
     switch (provider) {
       case "brave":
-        return searchBrave(query, key);
+        return searchBrave(query, key as string);
       case "serper":
-        return searchSerper(query, key);
+        return searchSerper(query, key as string);
       case "tavily":
       default:
-        return searchTavily(query, key);
+        return searchTavily(query, key as string);
     }
   };
 
-  // Several targeted angles for a genuinely deep read of the person, rather
-  // than one generic query. We do NOT force "Harvard" into the search — that
-  // biases away from finding who they actually are.
-  // 3 queries (each advanced search = 2 Tavily credits → ~6/scan). Biased
+  // 3 web queries (each advanced Tavily search = 2 credits → ~6/scan). Biased
   // toward students, since the subject is almost always a 14–20-year-old — a
   // bare name otherwise surfaces a famous older namesake.
   const ctx = context.slice(0, 140);
@@ -157,32 +137,41 @@ export async function retrieveFacts(
     `${name} LinkedIn`,
   ].filter(Boolean);
 
-  try {
-    const batches = await Promise.all(
-      queries.map((q) => runOne(q).catch(() => EMPTY))
-    );
-    // Append search results after the LinkedIn entry, deduping against it.
-    const seen = new Set<string>(snippets.map((s) => s.url || s.title));
-    const imgSeen = new Set<string>(images);
-    for (const b of batches) {
-      for (const snip of b.snippets) {
-        const k = snip.url || snip.title;
-        if (k && !seen.has(k)) {
-          seen.add(k);
-          snippets.push(snip);
-        }
-      }
-      for (const img of b.images) {
-        if (img && !imgSeen.has(img)) {
-          imgSeen.add(img);
-          images.push(img);
-        }
+  // Run the LinkedIn scrape (authoritative) and the web search concurrently so
+  // total retrieval time is bounded by the slower one, not the sum.
+  const [li, batches] = await Promise.all([
+    liUrl ? scrapeLinkedIn(liUrl).catch(() => null) : Promise.resolve(null),
+    key
+      ? Promise.all(queries.map((q) => runOne(q).catch(() => EMPTY)))
+      : Promise.resolve([] as Retrieval[]),
+  ]);
+
+  // LinkedIn goes first — it's authoritative identity.
+  if (li && liUrl) {
+    snippets.push({
+      title: "LinkedIn profile (self-provided, AUTHORITATIVE — this is the subject)",
+      snippet: li.text,
+      url: liUrl,
+    });
+    if (li.imageUrl) images.push(li.imageUrl);
+  }
+
+  const seen = new Set<string>(snippets.map((s) => s.url || s.title));
+  const imgSeen = new Set<string>(images);
+  for (const b of batches) {
+    for (const snip of b.snippets) {
+      const k = snip.url || snip.title;
+      if (k && !seen.has(k)) {
+        seen.add(k);
+        snippets.push(snip);
       }
     }
-    return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
-  } catch {
-    // Search failed — still return whatever LinkedIn gave us. Thin results are
-    // handled downstream ("About 0 results" is the joke).
-    return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
+    for (const img of b.images) {
+      if (img && !imgSeen.has(img)) {
+        imgSeen.add(img);
+        images.push(img);
+      }
+    }
   }
+  return { snippets: snippets.slice(0, 14), images: images.slice(0, 6) };
 }

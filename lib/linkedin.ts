@@ -1,20 +1,29 @@
 /**
- * LinkedIn enrichment. When someone drops a LinkedIn URL into the additional-
- * info box, we scrape that profile and treat it as AUTHORITATIVE identity — the
- * single strongest signal for grounding the scan and killing the wrong-person
- * problem (we now know exactly who they are, plus a reliable headshot).
+ * LinkedIn enrichment via Bright Data. When someone drops a LinkedIn URL into
+ * the additional-info box, we scrape that profile and treat it as AUTHORITATIVE
+ * identity — the strongest signal for grounding the scan, getting a reliable
+ * headshot, and killing the wrong-person problem.
  *
- * Provider-agnostic: set LINKEDIN_API_KEY (+ optional LINKEDIN_API_URL). The
- * default request shape targets a Proxycurl-style GET endpoint
- * (?url=<profile>&Authorization: Bearer <key>); swap LINKEDIN_API_URL / the
- * auth style to match whatever scraper you plug in. No key = no-op (the URL
- * still reaches the model as plain text via the context).
+ * Bright Data "LinkedIn People Profile" scraper, synchronous endpoint:
+ *   POST https://api.brightdata.com/datasets/v3/scrape
+ *        ?dataset_id=<id>&format=json
+ *   Authorization: Bearer <LINKEDIN_API_KEY>
+ *   body: [{ "url": "https://www.linkedin.com/in/..." }]
+ *
+ * Env: LINKEDIN_API_KEY (Bright Data token). Optional overrides:
+ *   BRIGHTDATA_DATASET_ID (default gd_l1viktl72bvl7bjuj0)
+ *   LINKEDIN_API_URL (full endpoint override).
+ * No key = no-op (the URL still reaches the model as plain context text).
  */
 
 const LINKEDIN_URL_RE =
   /https?:\/\/([\w-]+\.)*linkedin\.com\/(in|pub)\/[A-Za-z0-9\-_%.]+/i;
 
-/** Pull a linkedin.com/in/... URL out of free text (the context box). */
+const DEFAULT_DATASET = "gd_l1viktl72bvl7bjuj0";
+// Bright Data live scrapes take a while; cap so the whole scan stays under the
+// 60s function limit. If it doesn't finish in time we degrade to web + context.
+const TIMEOUT_MS = 38000;
+
 export function extractLinkedInUrl(text: string | undefined): string | null {
   if (!text) return null;
   const m = text.match(LINKEDIN_URL_RE);
@@ -22,9 +31,7 @@ export function extractLinkedInUrl(text: string | undefined): string | null {
 }
 
 export interface LinkedInData {
-  /** Flattened profile text to feed the model as an authoritative snippet. */
   text: string;
-  /** Profile photo, if the provider returns one. */
   imageUrl?: string;
 }
 
@@ -35,31 +42,43 @@ export function linkedInConfigured(): boolean {
 export async function scrapeLinkedIn(url: string): Promise<LinkedInData | null> {
   const key = process.env.LINKEDIN_API_KEY;
   if (!key) return null;
+
+  const datasetId = process.env.BRIGHTDATA_DATASET_ID || DEFAULT_DATASET;
   const endpoint =
-    process.env.LINKEDIN_API_URL || "https://nubela.co/proxycurl/api/v2/linkedin";
+    process.env.LINKEDIN_API_URL ||
+    `https://api.brightdata.com/datasets/v3/scrape?dataset_id=${datasetId}&format=json`;
 
   try {
-    const res = await fetch(
-      `${endpoint}?url=${encodeURIComponent(url)}&use_cache=if-present`,
-      {
-        headers: { Authorization: `Bearer ${key}` },
-        signal: AbortSignal.timeout(12000),
-      }
-    );
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([{ url }]),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
     if (!res.ok) return null;
-    const data = (await res.json()) as Record<string, unknown>;
 
-    // Provider-agnostic: hand the model the raw JSON (capped) plus try a few
-    // common field names for the photo.
+    const data = await res.json();
+    // Bright Data returns an array of profile objects (one per input URL).
+    const profile = (Array.isArray(data) ? data[0] : data) as
+      | Record<string, unknown>
+      | undefined;
+    if (!profile || typeof profile !== "object" || "error" in profile) {
+      return null;
+    }
+
     const imageUrl =
-      (data.profile_pic_url as string) ||
-      (data.profilePicture as string) ||
-      (data.profile_picture as string) ||
-      (data.photo_url as string) ||
-      (data.avatar as string) ||
+      (profile.avatar as string) ||
+      (profile.profile_image_url as string) ||
+      (profile.profile_pic_url as string) ||
+      (profile.image as string) ||
       undefined;
 
-    return { text: JSON.stringify(data).slice(0, 3500), imageUrl };
+    // Feed the whole profile JSON to the model (capped); the exact field names
+    // don't matter for grounding, only that it's the real person.
+    return { text: JSON.stringify(profile).slice(0, 3500), imageUrl };
   } catch {
     return null;
   }
