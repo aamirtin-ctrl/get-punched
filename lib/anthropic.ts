@@ -68,6 +68,7 @@ function normalize(raw: unknown, name: string): ScanResult {
   return {
     tagline: str(top.tagline) || fallback.tagline,
     web_summary: str(top.web_summary) || fallback.web_summary,
+    wrong_person: top.wrong_person === true,
     evidence,
     punch_worthiness: {
       score: clamp(pw.score ?? fallback.punch_worthiness.score),
@@ -205,11 +206,15 @@ export async function runScan(
 
   if (useMock) {
     // Free test path: hand-authored seeds for known names, generic mock
-    // otherwise. Famous seeds are clearly "found online," so report a
-    // nominal fact count to skip the "About 0 results" empty-state joke.
+    // otherwise. Only attach a scraped photo to a KNOWN seed (a famous person
+    // whose top image is reliably them) — never to the generic fixture, or
+    // you get a stranger's face on someone else's cards.
     const seeded = seededScanFor(name);
     const base = seeded ?? mockScan(name);
-    const result = { ...base, image_url: base.image_url ?? scrapedImage };
+    const result = {
+      ...base,
+      image_url: base.image_url ?? (seeded ? scrapedImage : undefined),
+    };
     return {
       result,
       factCount: seeded ? Math.max(snippets.length, 6) : snippets.length,
@@ -230,16 +235,24 @@ export async function runScan(
     if (parsed && typeof parsed === "object" && parsed.refused === true) {
       throw new ScanRefusedError();
     }
-    const result = { ...normalize(parsed, name), image_url: scrapedImage };
-    return { result, factCount: snippets.length };
+    const norm = normalize(parsed, name);
+    // Only show the scraped photo when the model is confident the scrape is
+    // actually about this person (not a famous namesake).
+    const result = {
+      ...norm,
+      image_url: norm.wrong_person ? undefined : scrapedImage,
+    };
+    return { result, factCount: norm.wrong_person ? 0 : snippets.length };
   } catch (err) {
     if (err instanceof ScanRefusedError) throw err;
-    // Never error out to the user — fall back to a seed if we have one, else
-    // the generic fixture.
-    const base = seededScanFor(name) ?? mockScan(name);
+    // Generation failed — fall back to a seed if we have one, else the generic
+    // fixture. Do NOT attach the scraped image: the cards are generic, so a
+    // real photo would just be a mismatched stranger.
+    const seeded = seededScanFor(name);
+    const base = seeded ?? mockScan(name);
     return {
-      result: { ...base, image_url: base.image_url ?? scrapedImage },
-      factCount: snippets.length,
+      result: { ...base, image_url: base.image_url },
+      factCount: seeded ? Math.max(snippets.length, 6) : 0,
     };
   }
 }

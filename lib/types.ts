@@ -19,6 +19,8 @@ export interface ScanResult {
   tagline?: string;
   /** Neutral 1–2 sentence factual summary from the scrape (stored in the DB). */
   web_summary?: string;
+  /** True if the scrape clearly matched a famous namesake, not the student. */
+  wrong_person?: boolean;
   /** Scraped headshot URL; falls back to a monogram when absent. */
   image_url?: string;
   /** Real things they've actually done (from the scrape), for the résumé card. */

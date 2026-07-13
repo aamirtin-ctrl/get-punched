@@ -125,14 +125,14 @@ export async function retrieveFacts(
   // Several targeted angles for a genuinely deep read of the person, rather
   // than one generic query. We do NOT force "Harvard" into the search — that
   // biases away from finding who they actually are.
-  // Kept to 3 queries to conserve Tavily credits (each advanced search = 2
-  // credits, so this is ~6 credits/scan). Covers bio/context, professional
-  // presence, and a headshot.
+  // 3 queries (each advanced search = 2 Tavily credits → ~6/scan). Biased
+  // toward students, since the subject is almost always a 14–20-year-old — a
+  // bare name otherwise surfaces a famous older namesake.
   const ctx = context.slice(0, 140);
   const queries = [
     [name, ctx].filter(Boolean).join(" "),
-    `${name} LinkedIn OR founder OR profile OR interview`,
-    `${name} photo OR headshot`,
+    `${name} student OR college OR "high school" OR university`,
+    `${name} LinkedIn`,
   ].filter(Boolean);
 
   try {
