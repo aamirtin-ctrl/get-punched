@@ -37,11 +37,18 @@ export function OverviewCard({
 
       {/* Identity row */}
       <div className="mt-3 flex items-center gap-3">
-        <PersonPhoto
-          src={result.image_url}
-          name={name}
-          className="h-[4.2rem] w-[4.2rem] shrink-0 rounded-sm border-2 border-[#d9cfba]"
-        />
+        {/* Border lives on the wrapper, not the <img>. Mobile Safari's
+            html-to-image fails to rasterize an image that has a border/radius
+            on the image element itself (that's why this headshot was blank in
+            the download while Paper Trail's — a plain img in a bordered div —
+            rendered fine). */}
+        <div className="shrink-0 border-2 border-[#d9cfba]">
+          <PersonPhoto
+            src={result.image_url}
+            name={name}
+            className="h-[4.2rem] w-[4.2rem]"
+          />
+        </div>
         <div className="min-w-0">
           <h2
             className="truncate text-[1.5rem] leading-tight"
