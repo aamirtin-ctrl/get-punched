@@ -20,6 +20,7 @@ import { GunnerRatingCard } from "./cards/GunnerRating";
 import { CertifiablyCrackedCard } from "./cards/CertifiablyCracked";
 import { FinalClassificationCard } from "./cards/FinalClassification";
 import { ScanAgainCard } from "./cards/ScanAgain";
+import { FreeScanPromoCard } from "./cards/FreeScanPromo";
 
 const CARD_KEYS = [
   "overview",
@@ -32,10 +33,12 @@ const CARD_KEYS = [
   "certifiably-cracked",
   "final-classification",
   "scan-again",
+  "free-scan",
 ] as const;
 
-// The trailing CTA card is not a verdict, so it's excluded from Download all.
-const DOWNLOADABLE = (key: string) => key !== "scan-again";
+// Trailing CTA cards aren't verdicts, so they're excluded from Download all.
+const DOWNLOADABLE = (key: string) =>
+  key !== "scan-again" && key !== "free-scan";
 
 const CARD_W = 390;
 
@@ -306,6 +309,7 @@ export function CardCarousel({
     <CertifiablyCrackedCard key="cc" name={name} data={result.certifiably_cracked} />,
     <FinalClassificationCard key="fc" name={name} data={result.final_club} />,
     <ScanAgainCard key="sa" name={name} />,
+    <FreeScanPromoCard key="fs" />,
   ];
 
   return (

@@ -3,18 +3,22 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 /**
- * Lightweight diagnostic: is the scan database wired up and reachable, and how
- * many scans are stored. No records or PII are returned. If ADMIN_KEY is set,
- * requires ?key=<ADMIN_KEY>; otherwise it's open (lock it down by setting
- * ADMIN_KEY, or delete this route once you've confirmed the connection).
+ * Admin-only diagnostic: is the scan database wired up and how many scans are
+ * stored. Gated behind ADMIN_TOKEN (same as /admin) and locked by default — no
+ * dataset info (not even counts) is exposed publicly. Pass the token as `?key=`
+ * or an `x-admin-key` header. No records or PII are ever returned.
  */
+function authorized(req: Request): boolean {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) return false; // locked until a token is configured
+  const key =
+    new URL(req.url).searchParams.get("key") ?? req.headers.get("x-admin-key");
+  return key === token;
+}
+
 export async function GET(req: Request) {
-  const adminKey = process.env.ADMIN_KEY;
-  if (adminKey) {
-    const key = new URL(req.url).searchParams.get("key");
-    if (key !== adminKey) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  if (!authorized(req)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   // Config check (presence only — never returns key values).
@@ -26,9 +30,7 @@ export async function GET(req: Request) {
     anthropic: hasAnthropic,
     search: hasSearch,
     searchProvider: process.env.SEARCH_PROVIDER || "tavily",
-    // True means live scans fall back to the generic mock cards.
-    mockMode:
-      process.env.MOCK_SCAN === "1" || (!hasGemini && !hasAnthropic),
+    mockMode: process.env.MOCK_SCAN === "1" || (!hasGemini && !hasAnthropic),
   };
 
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;

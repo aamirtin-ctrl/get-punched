@@ -156,3 +156,86 @@ export function recordScan(record: ScanRecord): void {
     }
   })();
 }
+
+/** Read an Upstash pipeline and return the raw result array. */
+async function kvRead(
+  commands: (string | number)[][]
+): Promise<{ result: unknown }[]> {
+  const creds = kvCreds();
+  if (!creds) return [];
+  const r = await fetch(`${creds.url}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${creds.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commands),
+    cache: "no-store",
+  });
+  return (await r.json()) as { result: unknown }[];
+}
+
+// Illustrative rows so the admin view has something to show in local dev
+// (no Upstash configured). Never used in production, where real records exist.
+const SAMPLE_SCANS: ScanRecord[] = [
+  {
+    id: "sample-1", createdAt: 1752604800000, scannerId: "v-a1c9",
+    email: "maya.patel@college.edu", name: "Maya Patel",
+    context: "Harvard '27, Currier, comping the Crimson — Web: undergrad journalist",
+    overall: 78,
+    scores: { punch_worthiness: 82, sellout_index: 64, legacy_multiplier: 40, paper_trail: 71, human_moat: 66, gunner_rating: 88, certifiably_cracked: 74, final_match: 81 },
+    club: "Fly", accomplishments: ["Editor, The Crimson", "Debate nationals finalist"],
+    verdictUrl: "https://harvardwithinharvard.com/share/ab12cd34ef",
+  },
+  {
+    id: "sample-2", createdAt: 1752691200000, scannerId: "v-a1c9",
+    email: "maya.patel@college.edu", name: "Daniel Okafor",
+    context: "Roommate, econ, McKinsey sophomore intern",
+    overall: 63,
+    scores: { punch_worthiness: 58, sellout_index: 91, legacy_multiplier: 55, paper_trail: 44, human_moat: 47, gunner_rating: 70, certifiably_cracked: 61, final_match: 72 },
+    club: "Owl", accomplishments: ["McKinsey intern"],
+    verdictUrl: "https://harvardwithinharvard.com/share/77ab90cde1",
+  },
+  {
+    id: "sample-3", createdAt: 1752777600000, scannerId: "v-7f2b",
+    email: "jsmith2027@gmail.com", name: "Jordan Smith",
+    context: "",
+    overall: 34,
+    scores: { punch_worthiness: 22, sellout_index: 30, legacy_multiplier: 25, paper_trail: 18, human_moat: 55, gunner_rating: 41, certifiably_cracked: 47, final_match: 63 },
+    club: "Fox", accomplishments: [],
+    verdictUrl: "https://harvardwithinharvard.com/share/3c5e7a9b0d",
+  },
+  {
+    id: "sample-4", createdAt: 1752864000000, scannerId: "v-e4d1",
+    email: "reese.laurent@nyu.edu", name: "Reese Laurent",
+    context: "Third-gen legacy, Porcellian rumors — Web: family foundation board",
+    overall: 89,
+    scores: { punch_worthiness: 94, sellout_index: 70, legacy_multiplier: 96, paper_trail: 85, human_moat: 78, gunner_rating: 90, certifiably_cracked: 88, final_match: 92 },
+    club: "Porcellian", accomplishments: ["Family foundation board", "Junior sailing champion"],
+    verdictUrl: "https://harvardwithinharvard.com/share/aa11bb22cc",
+  },
+];
+
+/**
+ * Every recorded scan, newest first. Reads Upstash when configured, else the
+ * in-memory store (or a small sample set in local dev so the admin view isn't
+ * empty). Returns [] on any failure — the admin page renders "no entries".
+ */
+export async function listScans(limit = 1000): Promise<ScanRecord[]> {
+  if (kvConfigured()) {
+    try {
+      const idsResp = await kvRead([["LRANGE", "scans:all", "0", String(limit - 1)]]);
+      const ids = (idsResp[0]?.result as string[] | undefined) ?? [];
+      if (!ids.length) return [];
+      const valsResp = await kvRead([["MGET", ...ids.map((id) => `scan:${id}`)]]);
+      const vals = (valsResp[0]?.result as (string | null)[] | undefined) ?? [];
+      return vals
+        .filter((v): v is string => Boolean(v))
+        .map((v) => JSON.parse(v) as ScanRecord);
+    } catch {
+      return [];
+    }
+  }
+  if (memory.length) return [...memory].reverse();
+  return process.env.NODE_ENV === "development" ? SAMPLE_SCANS : [];
+}
