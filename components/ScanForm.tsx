@@ -58,11 +58,11 @@ export function ScanForm() {
         className="eyebrow-wide mt-4 w-full rounded-md bg-[#b4515e] py-3.5 text-card shadow transition-colors hover:bg-crimson disabled:cursor-not-allowed disabled:opacity-60"
         style={{ fontSize: "0.82rem" }}
       >
-        {submitting ? "Opening the punch list…" : "Scan me · $2"}
+        {submitting ? "Opening the punch list…" : "Scan me · $1.50"}
       </button>
 
       <p className="mt-2 text-center text-[0.7rem] italic text-faded">
-        $2 per scan, paid securely via Stripe.
+        $1.50 per scan, paid securely via Stripe.
       </p>
 
       {error && (

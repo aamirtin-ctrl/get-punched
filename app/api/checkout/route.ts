@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       {
         price_data: {
           currency: "usd",
-          unit_amount: 200,
+          unit_amount: 150,
           product_data: {
             name: "Get Punched — Harvard Status Scan",
             description: `Public-internet punch scan for ${name}`,

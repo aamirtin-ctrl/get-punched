@@ -70,7 +70,7 @@ export function ScanAgainCard({ name }: { name: string }) {
             className="eyebrow-wide mt-3 w-full rounded-md bg-crimson py-3 text-card transition-colors hover:bg-crimsondeep disabled:opacity-60"
             style={{ fontSize: "0.78rem" }}
           >
-            {going ? "Ruining a friendship…" : "Scan them · $2"}
+            {going ? "Ruining a friendship…" : "Scan them · $1.50"}
           </button>
         </form>
 

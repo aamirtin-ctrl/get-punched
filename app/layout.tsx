@@ -33,7 +33,7 @@ const caveat = Caveat({
 export const metadata: Metadata = {
   title: "Get Punched — Harvard within Harvard",
   description:
-    "Getting into Harvard was easy. Punch season is the real admissions. A satirical $2 public-internet status scan.",
+    "Getting into Harvard was easy. Punch season is the real admissions. A satirical $1.50 public-internet status scan.",
 };
 
 export default function RootLayout({

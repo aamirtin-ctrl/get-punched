@@ -56,7 +56,7 @@ export default async function ShareByIdPage({
           className="eyebrow inline-block rounded-sm bg-crimson px-5 py-1.5 text-card transition-colors hover:bg-crimsondeep"
           style={{ fontSize: "0.6rem" }}
         >
-          Scan yourself · $2
+          Scan yourself · $1.50
         </Link>
       </div>
       <p className="shrink-0 px-6 pb-2 text-center text-[0.5rem] leading-tight text-faded/70">
