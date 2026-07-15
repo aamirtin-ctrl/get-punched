@@ -100,13 +100,24 @@ export function CardCarousel({
   const renderCardPng = useCallback(async (i: number, pixelRatio = 3) => {
     const node = cardRefs.current[i];
     if (!node) return null;
-    return toPng(node, {
+    const opts = {
       pixelRatio,
       cacheBust: true,
       width: CARD_W,
       height: node.offsetHeight,
       style: { transform: "none", transformOrigin: "top left", margin: "0" },
-    });
+    };
+    // Mobile Safari embeds <img> resources lazily inside html-to-image's SVG,
+    // so the first pass or two come back with a BLANK headshot even though the
+    // data is there. Throwaway warm-up passes (cheap, at ratio 1) force the
+    // image to decode into the render pipeline before the real capture.
+    try {
+      await toPng(node, { ...opts, pixelRatio: 1 });
+      await toPng(node, { ...opts, pixelRatio: 1 });
+    } catch {
+      /* warm-up is best-effort */
+    }
+    return toPng(node, opts);
   }, []);
 
   const triggerDownload = (dataUrl: string, key: string) => {
