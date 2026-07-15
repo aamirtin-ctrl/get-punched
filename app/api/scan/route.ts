@@ -27,7 +27,8 @@ async function respond(
   payload: ScanPayload,
   scannerId: string,
   isNewVisitor: boolean,
-  record: boolean
+  record: boolean,
+  email?: string
 ) {
   const share = encodeSharePayload(payload);
   // Short link (stored in KV); falls back to the long stateless link.
@@ -51,6 +52,7 @@ async function respond(
         result: payload.result,
         verdictUrl,
         scannerId,
+        email,
       })
     );
   }
@@ -97,11 +99,16 @@ export async function GET(req: Request) {
     let paid = false;
     let name = "";
     let context = "";
+    let email: string | undefined;
     try {
       const session = await getStripe().checkout.sessions.retrieve(sessionId);
       paid = session.payment_status === "paid";
       name = session.metadata?.scan_name ?? "";
       context = session.metadata?.scan_context ?? "";
+      // The email the customer entered at Stripe Checkout — attached to the DB
+      // record so entries aren't anonymous. Stripe collects it by default.
+      email =
+        session.customer_details?.email ?? session.customer_email ?? undefined;
     } catch {
       return NextResponse.json({ error: "Unknown session." }, { status: 404 });
     }
@@ -128,7 +135,7 @@ export async function GET(req: Request) {
 
     try {
       const payload = await getOrCreateScan(sessionId, () => generate(name, context));
-      return await respond(payload, scannerId, isNewVisitor, true);
+      return await respond(payload, scannerId, isNewVisitor, true, email);
     } catch (err) {
       if (err instanceof ScanRefusedError) {
         return NextResponse.json({ error: GUARDRAIL_MESSAGE }, { status: 400 });
