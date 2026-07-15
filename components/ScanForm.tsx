@@ -8,17 +8,29 @@ export function ScanForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || submitting) return;
     setSubmitting(true);
     setError(null);
-    // FREE-MODE (no payment yet): go straight to the cards. When the Stripe
-    // portal is wired up, this becomes a POST to /api/checkout that redirects
-    // to Stripe Checkout and back to /scan?session_id=... on success.
-    const params = new URLSearchParams({ name: name.trim() });
-    if (context.trim()) params.set("context", context.trim());
-    window.location.href = `/scan?${params.toString()}`;
+    // POST to /api/checkout → Stripe Checkout URL when payments are on, or a
+    // signed dev-token /scan URL in local dev. Then redirect to whatever it
+    // returns (Stripe sends the user back to /scan?session_id=... on success).
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), context: context.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Something went wrong. Please try again.");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setSubmitting(false);
+    }
   }
 
   return (

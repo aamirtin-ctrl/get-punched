@@ -12,15 +12,30 @@ export function ScanAgainCard({ name }: { name: string }) {
   const [friend, setFriend] = useState("");
   const [context, setContext] = useState("");
   const [going, setGoing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!friend.trim() || going) return;
     setGoing(true);
-    // Free-mode: straight to their cards. Wrap in checkout once Stripe is on.
-    const params = new URLSearchParams({ name: friend.trim() });
-    if (context.trim()) params.set("context", context.trim());
-    window.location.href = `/scan?${params.toString()}`;
+    setError(null);
+    // POST to /api/checkout → Stripe Checkout URL (or a dev-token /scan URL in
+    // local dev), then redirect to whatever it returns.
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: friend.trim(), context: context.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Something went wrong. Please try again.");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setGoing(false);
+    }
   }
 
   const first = name.split(" ")[0] || "You";
@@ -88,6 +103,10 @@ export function ScanAgainCard({ name }: { name: string }) {
         <p className="mt-2.5 text-center text-[0.72rem] italic text-faded">
           A LinkedIn URL gets the sharpest read. The curve decides.
         </p>
+
+        {error && (
+          <p className="mt-2 text-center text-[0.78rem] text-crimson">{error}</p>
+        )}
       </div>
     </CardFrame>
   );
