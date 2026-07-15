@@ -24,15 +24,28 @@ export function FinalClassificationCard({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
-        {/* Monogram medallion */}
-        <div className="flex h-[4.6rem] w-[4.6rem] items-center justify-center rounded-full border border-gold/70 bg-gradient-to-b from-[#241c11] to-[#17110c] shadow-[0_0_30px_-8px_rgba(201,162,39,0.45)]">
-          <div className="flex h-[3.9rem] w-[3.9rem] items-center justify-center rounded-full border border-gold/40">
-            <span
-              className="text-2xl text-goldsoft"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {initials || "?"}
-            </span>
+        {/* Monogram medallion. The gold glow is a centered radial gradient, not
+            a box-shadow — html-to-image mis-positions blurred shadows, which
+            left the halo off-center in the downloaded PNG. */}
+        <div className="relative">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute rounded-full"
+            style={{
+              inset: "-1.5rem",
+              background:
+                "radial-gradient(circle, rgba(201,162,39,0.40) 0%, rgba(201,162,39,0) 70%)",
+            }}
+          />
+          <div className="relative flex h-[4.6rem] w-[4.6rem] items-center justify-center rounded-full border border-gold/70 bg-gradient-to-b from-[#241c11] to-[#17110c]">
+            <div className="flex h-[3.9rem] w-[3.9rem] items-center justify-center rounded-full border border-gold/40">
+              <span
+                className="text-2xl text-goldsoft"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {initials || "?"}
+              </span>
+            </div>
           </div>
         </div>
 

@@ -19,7 +19,7 @@ export function SelloutIndexCard({
       />
 
       {/* Mock offer letter */}
-      <div className="relative mt-5 border border-cardline bg-[#fbf7ec] px-4 py-4 shadow-[0_6px_18px_-10px_rgba(33,26,19,0.4)]">
+      <div className="relative mt-5 border border-cardline bg-[#fbf7ec] px-4 py-4">
         <div className="absolute -top-2.5 right-3 rotate-6">
           <span className="eyebrow inline-block border-2 border-crimson bg-card px-2 py-1 text-crimson">
             Offer extended

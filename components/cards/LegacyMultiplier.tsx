@@ -10,7 +10,7 @@ function Bill({ green }: { green: boolean }) {
         green
           ? "border-[#7fae8a] bg-[#cfe6d2]"
           : "border-[#c7bda6] bg-[#e9e2d0]"
-      } shadow-[0_2px_4px_-2px_rgba(33,26,19,0.4)]`}
+      }`}
       style={{ transform: `rotate(${green ? -2 : 2}deg)` }}
     >
       <div

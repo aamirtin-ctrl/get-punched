@@ -49,14 +49,14 @@ export function PaperTrailCard({
 
         {/* Center "photo" — scraped headshot, pinned like evidence */}
         <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-          <div className="rotate-1 border-4 border-[#f3ead8] bg-[#d8ccb4] p-1 shadow-lg">
+          <div className="rotate-1 border-4 border-[#f3ead8] bg-[#d8ccb4] p-1">
             <PersonPhoto
               src={imageUrl}
               name={name}
               className="h-14 w-14 bg-[#8f7f68] text-[#f3ead8]"
             />
           </div>
-          <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#c0392b] shadow" />
+          <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#c0392b]" />
         </div>
 
         {/* Sticky notes */}
@@ -65,10 +65,10 @@ export function PaperTrailCard({
           return (
             <div
               key={i}
-              className="absolute z-20 w-[38%] bg-[#f6efdb] px-2.5 pb-2 pt-3 text-ink shadow-[0_5px_10px_-4px_rgba(0,0,0,0.55)]"
+              className="absolute z-20 w-[38%] bg-[#f6efdb] px-2.5 pb-2 pt-3 text-ink"
               style={{ ...pos, transform: `rotate(${pos.rotate})` }}
             >
-              <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#c0392b] shadow" />
+              <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#c0392b]" />
               <p
                 className="text-[0.95rem] leading-[1.15]"
                 style={{ fontFamily: "var(--font-hand)" }}

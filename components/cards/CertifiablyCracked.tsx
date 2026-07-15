@@ -46,14 +46,27 @@ export function CertifiablyCrackedCard({
                 <span className="block h-6 w-2 -rotate-12 bg-crimson/80" />
                 <span className="block h-6 w-2 rotate-12 bg-crimson/80" />
               </div>
-              <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-full bg-crimson shadow-[inset_0_2px_5px_rgba(0,0,0,0.35),0_2px_6px_rgba(110,20,20,0.5)]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#c46a6a]">
-                  <span
-                    className="text-[0.55rem] text-[#f0d9d9]"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    ΦBK
-                  </span>
+              <div className="relative z-10 h-11 w-11">
+                {/* soft red halo — a radial gradient renders centered; a
+                    box-shadow glow drifts off the seal in the download PNG */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute rounded-full"
+                  style={{
+                    inset: "-0.55rem",
+                    background:
+                      "radial-gradient(circle, rgba(110,20,20,0.5) 0%, rgba(110,20,20,0) 70%)",
+                  }}
+                />
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-b from-[#b02234] to-crimson">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#c46a6a]">
+                    <span
+                      className="text-[0.55rem] text-[#f0d9d9]"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      ΦBK
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

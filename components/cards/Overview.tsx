@@ -40,7 +40,7 @@ export function OverviewCard({
         <PersonPhoto
           src={result.image_url}
           name={name}
-          className="h-[4.2rem] w-[4.2rem] shrink-0 rounded-sm border-2 border-[#d9cfba] shadow-sm"
+          className="h-[4.2rem] w-[4.2rem] shrink-0 rounded-sm border-2 border-[#d9cfba]"
         />
         <div className="min-w-0">
           <h2
