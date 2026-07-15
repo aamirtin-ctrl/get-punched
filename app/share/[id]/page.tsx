@@ -1,10 +1,49 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getShare } from "@/lib/shareStore";
 import { CardCarousel } from "@/components/CardCarousel";
 
-export const metadata = {
-  title: "A Punch Verdict — Get Punched",
-};
+/** Personalized link preview: name in the title, verdict in the description. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const payload = await getShare(id);
+  if (!payload) {
+    return { title: "Verdict not found — Harvard within Harvard" };
+  }
+  const name = payload.name;
+  const first = name.split(" ")[0] || name;
+  const club = payload.result?.final_club?.club;
+  const tagline = payload.result?.tagline;
+  const title = `${name} is in the Harvard within Harvard™`;
+  const description = [
+    tagline ? `${tagline}.` : null,
+    club ? `Matched to the ${club}.` : null,
+    `See ${first}'s full punch verdict.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      siteName: "Harvard within Harvard",
+      title,
+      description,
+      images: [{ url: "/og.png", width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og.png"],
+    },
+  };
+}
 
 /** Short share link: /share/<id> — loads the stored verdict from KV. */
 export default async function ShareByIdPage({

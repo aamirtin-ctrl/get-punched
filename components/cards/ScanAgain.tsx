@@ -10,6 +10,7 @@ import { CardFrame } from "./chrome";
  */
 export function ScanAgainCard({ name }: { name: string }) {
   const [friend, setFriend] = useState("");
+  const [context, setContext] = useState("");
   const [going, setGoing] = useState(false);
 
   function submit(e: React.FormEvent) {
@@ -17,7 +18,9 @@ export function ScanAgainCard({ name }: { name: string }) {
     if (!friend.trim() || going) return;
     setGoing(true);
     // Free-mode: straight to their cards. Wrap in checkout once Stripe is on.
-    window.location.href = `/scan?name=${encodeURIComponent(friend.trim())}`;
+    const params = new URLSearchParams({ name: friend.trim() });
+    if (context.trim()) params.set("context", context.trim());
+    window.location.href = `/scan?${params.toString()}`;
   }
 
   const first = name.split(" ")[0] || "You";
@@ -25,35 +28,33 @@ export function ScanAgainCard({ name }: { name: string }) {
   return (
     <CardFrame name={name}>
       <div className="flex min-h-0 flex-1 flex-col justify-center">
-        <p className="eyebrow text-crimson">The Real Bracket</p>
+        <p className="eyebrow text-crimson">Grade On A Curve</p>
         <h2
           className="mt-3 text-[1.9rem] leading-[1.05]"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          You&apos;re not competing
-          <br />
-          with Harvard.
+          You&apos;ve seen your scan.
         </h2>
         <p
           className="mt-2 text-[1.6rem] leading-[1.1] text-crimson"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          You&apos;re competing with your friends.
+          But a verdict means nothing in isolation.
         </p>
 
         <p className="mt-4 text-[0.9rem] leading-relaxed text-ink/80">
-          {first}, they&apos;ve already seen where you got cut. The only real
-          question left is whether they&apos;d survive their own scan. Find out
-          before they screenshot yours.
+          {first}, a score is just a number until it has a curve. Drop in someone
+          you actually measure yourself against — a friend, a roommate, your group
+          chat&apos;s main character — and let the internet settle who ranks.
         </p>
 
-        <form onSubmit={submit} className="mt-5">
+        <form onSubmit={submit} className="mt-4">
           <label
             className="eyebrow block text-crimson"
             htmlFor="friend-name"
             style={{ fontSize: "0.58rem" }}
           >
-            Scan a friend
+            Scan someone next to you
           </label>
           <input
             id="friend-name"
@@ -62,6 +63,16 @@ export function ScanAgainCard({ name }: { name: string }) {
             placeholder="Their full name"
             maxLength={120}
             className="mt-1.5 w-full rounded-md border-2 border-ink/80 bg-white/70 px-3.5 py-2.5 text-[0.95rem] outline-none transition-colors placeholder:italic placeholder:text-faded/70 focus:border-crimson"
+            style={{ fontFamily: "var(--font-serif)" }}
+          />
+          <textarea
+            id="friend-context"
+            value={context}
+            onChange={(e) => setContext(e.target.value)}
+            placeholder="School, club, LinkedIn URL — sharpens the read (optional)"
+            rows={2}
+            maxLength={600}
+            className="mt-2 w-full resize-none rounded-md border-2 border-ink/40 bg-white/70 px-3.5 py-2 text-[0.88rem] outline-none transition-colors placeholder:italic placeholder:text-faded/70 focus:border-crimson"
             style={{ fontFamily: "var(--font-serif)" }}
           />
           <button
@@ -74,8 +85,8 @@ export function ScanAgainCard({ name }: { name: string }) {
           </button>
         </form>
 
-        <p className="mt-3 text-center text-[0.72rem] italic text-faded">
-          Same scan. New victim. Winner never lets it go.
+        <p className="mt-2.5 text-center text-[0.72rem] italic text-faded">
+          A LinkedIn URL gets the sharpest read. The curve decides.
         </p>
       </div>
     </CardFrame>

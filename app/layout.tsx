@@ -30,10 +30,37 @@ const caveat = Caveat({
   subsets: ["latin"],
 });
 
+// Canonical site URL for absolute OG/Twitter image links. Prefers the custom
+// domain (NEXT_PUBLIC_BASE_URL), falls back to the Vercel production URL, then
+// the vercel.app alias — so the share image always resolves to a live host.
+const SITE =
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "https://get-punched.vercel.app");
+
+const OG_TITLE = "Are you in the Harvard within Harvard™?";
+const OG_DESC =
+  "Getting in was easy. Punch season is the real admissions. Get scanned against final-club status culture and see where you actually land.";
+
 export const metadata: Metadata = {
-  title: "Get Punched — Harvard within Harvard",
+  metadataBase: new URL(SITE),
+  title: "Harvard within Harvard — The Punch Scan",
   description:
-    "Getting into Harvard was easy. Punch season is the real admissions. A satirical $1.50 public-internet status scan.",
+    "You got into Harvard. But are you in the Harvard within Harvard? A satirical $1.50 scan of where you land in final-club status culture.",
+  openGraph: {
+    type: "website",
+    siteName: "Harvard within Harvard",
+    title: OG_TITLE,
+    description: OG_DESC,
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Harvard within Harvard" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: OG_TITLE,
+    description: OG_DESC,
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({
