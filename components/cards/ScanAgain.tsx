@@ -84,7 +84,7 @@ export function ScanAgainCard({ name }: { name: string }) {
             id="friend-context"
             value={context}
             onChange={(e) => setContext(e.target.value)}
-            placeholder="School, club, LinkedIn URL — sharpens the read (optional)"
+            placeholder="School, Club, LinkedIn URL (optional)"
             rows={2}
             maxLength={600}
             className="mt-2 w-full resize-none rounded-md border-2 border-ink/40 bg-white/70 px-3.5 py-2 text-[0.88rem] outline-none transition-colors placeholder:italic placeholder:text-faded/70 focus:border-crimson"
@@ -99,10 +99,6 @@ export function ScanAgainCard({ name }: { name: string }) {
             {going ? "Ruining a friendship…" : "Scan them · $1.50"}
           </button>
         </form>
-
-        <p className="mt-2.5 text-center text-[0.72rem] italic text-faded">
-          A LinkedIn URL gets the sharpest read. The curve decides.
-        </p>
 
         {error && (
           <p className="mt-2 text-center text-[0.78rem] text-crimson">{error}</p>

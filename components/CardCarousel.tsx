@@ -250,9 +250,11 @@ export function CardCarousel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, flash, shareUrl]);
 
-  // Instagram is visual: share the active card image via the native sheet
-  // (Instagram / Stories appear there on mobile). Desktop fallback: save the
-  // image and copy the link to paste manually.
+  // Instagram is visual: share the active card image. On mobile the native
+  // sheet lists Instagram (Feed / Stories / Direct) as a one-tap target with the
+  // image already attached — iOS doesn't let a site push an image straight into
+  // a DM, so that sheet IS the supported "send to friends on Instagram" path.
+  // Desktop / no file-share: save the image, copy the link, and open Instagram.
   const shareToInstagram = useCallback(async () => {
     if (busy) return;
     setBusy(true);
@@ -267,19 +269,25 @@ export function CardCarousel({
           canShare?: (d: { files: File[] }) => boolean;
         };
         if (nav.canShare?.({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: "Get Punched",
-            text: `Where ${name} got cut. harvardwithinharvard.com`,
-          });
+          try {
+            await navigator.share({
+              files: [file],
+              title: "Get Punched",
+              text: `Where ${name} got cut. harvardwithinharvard.com`,
+            });
+          } catch (err) {
+            if ((err as Error)?.name === "AbortError") {
+              setToast(null);
+              return;
+            }
+          }
           return;
         }
         triggerDownload(dataUrl, CARD_KEYS[active]);
       }
-      try {
-        await navigator.clipboard.writeText(linkUrl());
-      } catch {}
-      flash("Saved image + copied link — post it to Instagram");
+      void copyText(linkUrl());
+      window.open("https://www.instagram.com/", "_blank", "noopener");
+      flash("Image saved + link copied — opening Instagram");
     } catch {
       flash("Share failed — try Download");
     } finally {
