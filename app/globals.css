@@ -94,6 +94,24 @@ body {
   animation: scanPulse 1.6s ease-in-out infinite;
 }
 
+/* Loading caricatures: gentle peek-in bob at the corners.
+   Rotation lives on the parent wrapper so this transform doesn't clobber it. */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.bob {
+  animation: bob 2.4s ease-in-out infinite;
+}
+/* Rotating loading line fades/slides in as it swaps */
+@keyframes bubbleFade {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.bubble-fade {
+  animation: bubbleFade 0.45s ease-out both;
+}
+
 @keyframes scanSweep {
   from { transform: translateY(-120%); }
   to { transform: translateY(420%); }

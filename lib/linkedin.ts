@@ -69,17 +69,81 @@ export async function scrapeLinkedIn(url: string): Promise<LinkedInData | null> 
       return null;
     }
 
+    // `default_avatar: true` means the "photo" is LinkedIn's gray silhouette
+    // placeholder, not a real headshot — don't pass it off as their face.
     const imageUrl =
-      (profile.avatar as string) ||
-      (profile.profile_image_url as string) ||
-      (profile.profile_pic_url as string) ||
-      (profile.image as string) ||
-      undefined;
+      profile.default_avatar === true
+        ? undefined
+        : (profile.avatar as string) ||
+          (profile.profile_image_url as string) ||
+          (profile.profile_pic_url as string) ||
+          (profile.image as string) ||
+          undefined;
 
-    // Feed the whole profile JSON to the model (capped); the exact field names
-    // don't matter for grounding, only that it's the real person.
-    return { text: JSON.stringify(profile).slice(0, 3500), imageUrl };
+    return { text: summarizeProfile(profile), imageUrl };
   } catch {
     return null;
   }
+}
+
+const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+const arr = (v: unknown): Record<string, unknown>[] =>
+  Array.isArray(v) ? (v as Record<string, unknown>[]) : [];
+
+/**
+ * Distill the raw Bright Data profile down to the high-signal identity fields
+ * the scan actually grounds on. Dumping the full JSON (~20k chars) and slicing
+ * to a budget drops experience/education behind bulky `about`/`posts`; a curated
+ * summary keeps the useful bits and stays well under the model budget.
+ */
+function summarizeProfile(p: Record<string, unknown>): string {
+  const lines: string[] = [];
+  const push = (label: string, val: string) => {
+    if (val) lines.push(`${label}: ${val}`);
+  };
+
+  push("Name", s(p.name) || `${s(p.first_name)} ${s(p.last_name)}`.trim());
+  push("Headline", s(p.position));
+  push("Location", s(p.location) || s(p.city));
+
+  const cc = (p.current_company as Record<string, unknown>) || {};
+  const ccName = s(cc.name) || s(p.current_company_name);
+  if (ccName) push("Current", `${s(cc.title) || "—"} at ${ccName}`.trim());
+
+  const followers = Number(p.followers);
+  if (Number.isFinite(followers) && followers > 0)
+    push("Followers", followers.toLocaleString("en-US"));
+
+  push("About", s(p.about).slice(0, 700));
+
+  const edu =
+    arr(p.education)
+      .slice(0, 4)
+      .map((e) => {
+        const yr = [s(e.start_year), s(e.end_year)].filter(Boolean).join("–");
+        return `${s(e.title)}${yr ? ` (${yr})` : ""}`;
+      })
+      .filter((x) => x.replace(/[()–\s]/g, ""))
+      .join("; ") || s(p.educations_details);
+  push("Education", edu);
+
+  const exp = arr(p.experience)
+    .slice(0, 6)
+    .map((e) => {
+      const dates = [s(e.start_date), s(e.end_date)].filter(Boolean).join("–");
+      return `- ${s(e.title)}${e.company ? ` at ${s(e.company)}` : ""}${
+        dates ? ` (${dates})` : ""
+      }`;
+    })
+    .filter((x) => x.replace(/[-\s]/g, ""));
+  if (exp.length) lines.push("Experience:\n" + exp.join("\n"));
+
+  const honors = arr(p.honors_and_awards)
+    .slice(0, 5)
+    .map((h) => s(h.title) || s(h.name))
+    .filter(Boolean)
+    .join("; ");
+  push("Honors", honors);
+
+  return lines.join("\n").slice(0, 3500);
 }

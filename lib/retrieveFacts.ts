@@ -131,10 +131,15 @@ export async function retrieveFacts(
   // toward students, since the subject is almost always a 14–20-year-old — a
   // bare name otherwise surfaces a famous older namesake.
   const ctx = context.slice(0, 140);
+  // Quote the name so the search backend treats it as an exact phrase and does
+  // NOT autocorrect an uncommon spelling to a common one (e.g. searching
+  // "Tarik Syed" otherwise returns results for "Tariq Syed"). Strip any quotes
+  // the user typed so we don't break the phrase quoting.
+  const q = `"${name.replace(/["]/g, "").trim()}"`;
   const queries = [
-    [name, ctx].filter(Boolean).join(" "),
-    `${name} student OR college OR "high school" OR university`,
-    `${name} LinkedIn`,
+    [q, ctx].filter(Boolean).join(" "),
+    `${q} student OR college OR "high school" OR university`,
+    `${q} LinkedIn`,
   ].filter(Boolean);
 
   // Run the LinkedIn scrape (authoritative) and the web search concurrently so
