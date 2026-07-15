@@ -10,7 +10,7 @@ const variantClasses: Record<CardVariant, string> = {
 
 /**
  * Shared card shell: portrait (story-shaped), paper texture, footer with the
- * scanned name (left) and getpunched.com (right). Every card renders inside
+ * scanned name (left) and harvardwithinharvard.com (right). Every card renders inside
  * this so downloads look identical to what's on screen.
  */
 export function CardFrame({
@@ -50,7 +50,7 @@ export function CardFrame({
         <span
           className={`eyebrow ${variant === "ink" ? "text-goldsoft" : variant === "cork" ? "text-[#e8c9a0]" : "text-crimson"}`}
         >
-          getpunched.com
+          harvardwithinharvard.com
         </span>
       </div>
     </div>

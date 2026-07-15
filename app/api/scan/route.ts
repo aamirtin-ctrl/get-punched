@@ -118,9 +118,9 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            limit.reason === "daily-cap"
-              ? "We're at today's scan limit. Check back tomorrow."
-              : `Slow down. Try again in ${limit.retryAfterMin} minutes.`,
+            limit.reason === "ip-cap"
+              ? "You've hit today's scan limit from this device. Try again tomorrow."
+              : "We're at today's scan limit. Check back tomorrow.",
         },
         { status: 429 }
       );
@@ -155,9 +155,9 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            limit.reason === "daily-cap"
-              ? "We're at today's scan limit. Check back tomorrow."
-              : `Slow down. Try again in ${limit.retryAfterMin} minutes.`,
+            limit.reason === "ip-cap"
+              ? "You've hit today's scan limit from this device. Try again tomorrow."
+              : "We're at today's scan limit. Check back tomorrow.",
         },
         { status: 429 }
       );
@@ -195,9 +195,9 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           error:
-            limit.reason === "daily-cap"
-              ? "We're at today's scan limit. Check back tomorrow."
-              : `Slow down. Try again in ${limit.retryAfterMin} minutes.`,
+            limit.reason === "ip-cap"
+              ? "You've hit today's scan limit from this device. Try again tomorrow."
+              : "We're at today's scan limit. Check back tomorrow.",
         },
         { status: 429 }
       );

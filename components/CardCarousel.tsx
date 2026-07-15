@@ -116,28 +116,59 @@ export function CardCarousel({
     a.click();
   };
 
-  // Download EVERY card as a single .zip (nine separate downloads get blocked
-  // by the browser; one zip always goes through).
+  // Download EVERY card. On mobile we hand the PNGs to the native share sheet
+  // so the user can "Save N Images" straight into the Photos app (a plain
+  // download would land in Files via Safari's download manager). On desktop —
+  // where there's no file-share sheet — we fall back to a single .zip (nine
+  // separate downloads get blocked by the browser; one zip always goes through).
   const downloadAll = useCallback(async () => {
     if (busy) return;
     setBusy(true);
     flash("Rendering all cards…");
     try {
-      const zip = new JSZip();
-      let n = 0;
+      const files: File[] = [];
       for (let i = 0; i < CARD_KEYS.length; i++) {
         if (!DOWNLOADABLE(CARD_KEYS[i])) continue;
         const dataUrl = await renderCardPng(i, 2);
-        if (dataUrl) {
-          const base64 = dataUrl.split(",")[1];
-          zip.file(
+        if (!dataUrl) continue;
+        const blob = await (await fetch(dataUrl)).blob();
+        files.push(
+          new File(
+            [blob],
             `${String(i + 1).padStart(2, "0")}-${CARD_KEYS[i]}.png`,
-            base64,
-            { base64: true }
-          );
-          n++;
+            { type: "image/png" }
+          )
+        );
+      }
+      if (!files.length) {
+        flash("Download failed — try again");
+        return;
+      }
+
+      // Mobile path: native share sheet → "Save N Images" → Photos app.
+      const nav = navigator as Navigator & {
+        canShare?: (d: { files: File[] }) => boolean;
+        share?: (d: ShareData & { files?: File[] }) => Promise<void>;
+      };
+      if (nav.canShare?.({ files })) {
+        try {
+          flash("Choose “Save Images” to add to Photos");
+          await nav.share!({ files, title: `Get Punched — ${name}` });
+          flash("Saved ✓");
+          return;
+        } catch (err) {
+          // User dismissed the sheet — leave it, don't force a file download.
+          if ((err as Error)?.name === "AbortError") {
+            setToast(null);
+            return;
+          }
+          // Any other failure: fall through to the zip download below.
         }
       }
+
+      // Desktop (or share unsupported/failed): one .zip.
+      const zip = new JSZip();
+      files.forEach((f) => zip.file(f.name, f));
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
       const safeName = name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "scan";
@@ -146,7 +177,7 @@ export function CardCarousel({
       a.href = url;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      flash(`Saved ${n} cards (zip) ✓`);
+      flash(`Saved ${files.length} cards (zip) ✓`);
     } catch {
       flash("Download failed — try again");
     } finally {
@@ -197,7 +228,7 @@ export function CardCarousel({
       nav
         .share({
           title: "Get Punched",
-          text: `See where ${name} got cut. getpunched.com`,
+          text: `See where ${name} got cut. harvardwithinharvard.com`,
           url,
         })
         .catch(() => {});
@@ -228,7 +259,7 @@ export function CardCarousel({
           await navigator.share({
             files: [file],
             title: "Get Punched",
-            text: `Where ${name} got cut. getpunched.com`,
+            text: `Where ${name} got cut. harvardwithinharvard.com`,
           });
           return;
         }

@@ -1,20 +1,27 @@
 /**
- * Rate limiting to protect the LLM/search budget from abuse or runaway loops.
+ * Rate limiting to protect the API budget from a bug or abuse.
  *
- * Two ceilings:
- *   - per-IP hourly  (normal use: scan yourself + a few friends)
- *   - GLOBAL daily   (hard safety ceiling against a bug/attack burning the
- *                     whole free quota in one go)
+ * Two DAILY ceilings — no hourly or per-minute cap, so a real customer can scan
+ * several friends back to back without getting throttled:
+ *   - per-IP daily   (one device can't quietly run away with the whole quota)
+ *   - GLOBAL daily   (hard safety ceiling against a bug/attack)
  *
- * Backed by Upstash so counters are shared across serverless instances; falls
- * back to in-memory when KV isn't configured. (Note: none of the providers can
- * actually bill without a card on file — this guards the free quota + future.)
+ * Set either env var to 0 to disable that ceiling entirely. Backed by Upstash
+ * so counters are shared across serverless instances; falls back to in-memory
+ * when KV isn't configured. Fails open — a limiter error never blocks a paid
+ * scan. (Every scan is payment-gated anyway, so these are a backstop, not the
+ * primary cost control.)
  */
 
-// Tunable via env (raise these after upgrading the API plans).
-const PER_IP_PER_HOUR = Number(process.env.RATE_LIMIT_IP_HOUR) || 10;
-const GLOBAL_PER_DAY = Number(process.env.RATE_LIMIT_GLOBAL_DAY) || 300;
-const HOUR = 3600;
+// Tunable via env (0 = disable that ceiling).
+const PER_IP_PER_DAY =
+  process.env.RATE_LIMIT_IP_DAY !== undefined
+    ? Number(process.env.RATE_LIMIT_IP_DAY)
+    : 50;
+const GLOBAL_PER_DAY =
+  process.env.RATE_LIMIT_GLOBAL_DAY !== undefined
+    ? Number(process.env.RATE_LIMIT_GLOBAL_DAY)
+    : 300;
 const DAY = 86400;
 
 function creds(): { url: string; token: string } | null {
@@ -65,33 +72,33 @@ function memWindow(key: string, windowMs: number, max: number): boolean {
 
 export async function checkRateLimit(
   ip: string
-): Promise<{ ok: boolean; retryAfterMin?: number; reason?: string }> {
+): Promise<{ ok: boolean; reason?: string }> {
   const c = creds();
+  const perIpOn = Number.isFinite(PER_IP_PER_DAY) && PER_IP_PER_DAY > 0;
+  const globalOn = Number.isFinite(GLOBAL_PER_DAY) && GLOBAL_PER_DAY > 0;
 
   if (!c) {
-    // In-memory fallback: per-IP hourly + global daily.
-    if (!memWindow(`ip:${ip}`, HOUR * 1000, PER_IP_PER_HOUR)) {
-      return { ok: false, retryAfterMin: 60 };
+    // In-memory fallback: both ceilings on a rolling 24h window.
+    if (perIpOn && !memWindow(`ip:${ip}`, DAY * 1000, PER_IP_PER_DAY)) {
+      return { ok: false, reason: "ip-cap" };
     }
-    if (!memWindow("global", DAY * 1000, GLOBAL_PER_DAY)) {
+    if (globalOn && !memWindow("global", DAY * 1000, GLOBAL_PER_DAY)) {
       return { ok: false, reason: "daily-cap" };
     }
     return { ok: true };
   }
 
   try {
-    const nowSec = Math.floor(Date.now() / 1000);
-    const hourBucket = Math.floor(nowSec / HOUR);
-    const dayBucket = Math.floor(nowSec / DAY);
+    const dayBucket = Math.floor(Date.now() / 1000 / DAY);
 
     // Per-IP first, so one abusive IP can't inflate the global counter.
-    const ipCount = await kvIncr(c, `rl:ip:${ip}:${hourBucket}`, HOUR);
-    if (ipCount > PER_IP_PER_HOUR) {
-      return { ok: false, retryAfterMin: 60 };
+    if (perIpOn) {
+      const ipCount = await kvIncr(c, `rl:ip:${ip}:${dayBucket}`, DAY);
+      if (ipCount > PER_IP_PER_DAY) return { ok: false, reason: "ip-cap" };
     }
-    const globalCount = await kvIncr(c, `rl:day:${dayBucket}`, DAY);
-    if (globalCount > GLOBAL_PER_DAY) {
-      return { ok: false, reason: "daily-cap" };
+    if (globalOn) {
+      const globalCount = await kvIncr(c, `rl:day:${dayBucket}`, DAY);
+      if (globalCount > GLOBAL_PER_DAY) return { ok: false, reason: "daily-cap" };
     }
     return { ok: true };
   } catch {
